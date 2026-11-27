@@ -722,8 +722,14 @@ async function cmdEscrowFee() {
   console.log(JSON.stringify({ checkoutId, approveTx: r1?.results?.[0]?.txHash ?? null, createOrderTx: txHash, confirmed: true, status: "management fee escrowed — job is live" }, null, 2));
 }
 
-const balanceOfCall = (token, owner) =>
-  rpc("eth_call", [{ to: token, data: `0x70a08231${owner.slice(2).toLowerCase().padStart(64, "0")}` }, "latest"]);
+// Anchor：Venus vToken 的 balanceOf 可能回传 3 个 32 字节字（余额后面多带两个 0），
+// 直接整串当数字会变成天文数字，造成赎回交易资料错误。ABI 规定第一个字就是余额。
+const balanceOfCall = async (token, owner) => {
+  const r = await rpc("eth_call", [{ to: token, data: `0x70a08231${owner.slice(2).toLowerCase().padStart(64, "0")}` }, "latest"]);
+  const h = String(r || "0x").replace(/^0x/, "");
+  if (!h) return "0x0";
+  return "0x" + (h.length > 64 ? h.slice(0, 64) : h);
+};
 
 // Recover a task wallet at term end: send its ERC-20 balances (U + any tradable
 // tokens it holds) back to the login wallet, THEN the remaining native BNB. Token
