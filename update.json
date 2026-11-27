@@ -1,10 +1,10 @@
 {
- "version": "1.0.3",
- "commit": "456d5a4ef38196aea20500fc825390e1f58dbc91",
+ "version": "1.0.4",
+ "commit": "3d18da49049a792946e7c1e911bb71e401a00ebf",
  "critical": true,
  "notes": {
-  "zh": "必要更新：没解压就打开会提示先解压；每 5 分钟检查更新；重启时不再闪出首次设置；说明新增英文版。",
-  "en": "Required update: warns to extract the zip first, checks for updates every 5 minutes, no setup flash on restart, English guide."
+  "zh": "必要更新：钱包没有 USDC 时会清楚提醒要转入 BSC 链 USDC（每单至少 10U）。",
+  "en": "Required update: clear reminder to add USDC on BSC (at least 10U per round) when the wallet has none."
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "fb33eef35de69fef8cb61193275619877f13e89bdbc9fdeb15318d863f39391b",
+   "sha256": "c162e6826f0cc92a4b6d63c97434b22bab5cb59f97b6a8cadc3af1de25830466",
    "size": 8663
   },
   {
@@ -54,13 +54,13 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "0808d94a11b79ba1ec421bdacf37e28aba355778cb86e48bdc2dac54af6fe391",
+   "sha256": "b1bf5a4f44c6bba37103c1e7a1322e53ed59851e41f83e091456158c5768672b",
    "size": 106188
   },
   {
    "path": "app/ui.html",
-   "sha256": "8d634a690f42374f57fd6c2745ef095ed7d62b9ea88404d0b6d305597b37c9be",
-   "size": 228718
+   "sha256": "29324ecd213b60a7bd1e09c09ff148c051892a1e1fa3d12803c69b954ba2d11b",
+   "size": 230654
   },
   {
    "path": "app/updater.mjs",
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T16:18:18.504Z",
- "sig": "R9G8qvdaStsQNqW1Jfvxaco1IQyW+mfExnE6AGj7Oy8K/makqY4tpwbinmxblkV2OeHGgNOpwDGPaTpIAJdRAQ=="
+ "publishedAt": "2026-11-27T16:30:26.918Z",
+ "sig": "OXaRgAmO6b/I67LwWBw+43BX8dw8Y92X1E1z25b80xuwJ+cxz4xv5GndmmLw6ooReA5/Gp0JxYadrfZDZuP+DQ=="
 }
