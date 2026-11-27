@@ -31,8 +31,8 @@
 ## 三、下载与安装（只要做一次）
 
 1. 到 GitHub 下载工具：**只从 Nancy（@nancy_c813）的官方 GitHub 下载**
-   直接下载最新版：https://github.com/nancyc0813-maker/termix-autodeposit/releases/latest
-   在页面下方「Assets」点 **TermiX-AutoDeposit-v版本号.zip** 下载。
+   直接下载最新版：https://github.com/nancyc0813-maker/termix-autodeposit/archive/refs/heads/main.zip
+   （或打开 https://github.com/nancyc0813-maker/termix-autodeposit ，点绿色的「Code」→「Download ZIP」）
 2. 把压缩包解压到 **C:\TermiX** 这类位置。
    ⚠️ 不要放在会自动同步到云端的资料夹（OneDrive、Google Drive；很多电脑的「桌面」「文件」会被同步），否则任务钱包的钥匙可能被上传。
 3. 双击资料夹里的 **Start-TermiX.vbs**。
