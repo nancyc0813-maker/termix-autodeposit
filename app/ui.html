@@ -889,7 +889,7 @@ function render(){
     {ok:e.agent,t:'启用代理身份',p:e.heldAgent?('检测到你的币安 Agent ID：'+esc(e.heldAgent)+'，正在自动启用（不收手续费）。几秒后没完成请按「重新检查」。'):'没有检测到币安 Agent ID，需要新建一个代理身份（只花约 0.0002 BNB 手续费）。已经有 Agent ID 的话，先确认它绑在这个币安钱包上，再按「重新检查」。',a:(e.heldAgent?'':'<button class="btn sm pri" onclick="act(\'create-agent\')">新建代理身份</button> ')+'<button class="btn sm" onclick="act(\'refresh\')">重新检查</button>'},
   ];
   const firstBad=steps.findIndex(x=>!x.ok);
-  $('setup').style.display=firstBad<0?'none':'block';
+  $('setup').style.display=(firstBad<0||!e.checked)?'none':'block';
   $('steps').innerHTML=steps.map((x,i)=>`<div class="step ${x.ok?'done':i===firstBad?'cur':''}"><div class="n">${x.ok?ic('check'):i+1}</div><div><b>${x.t}</b><p>${x.p}</p>${!x.ok&&i===firstBad&&x.a?`<div class="act">${x.a}</div>`:''}</div></div>`).join('');
   const paused=S.slots.some(s=>s.step==='paused');
   $('dot').className='dot '+(paused?'err':S.running?'on':S.ready?'warn':'');

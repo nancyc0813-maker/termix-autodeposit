@@ -1,5 +1,7 @@
 # TermiX AutoDeposit 使用教程
 
+**English guide: [scroll down ↓](#english-guide)**
+
 > 用币安 AI 钱包自动存入 TermiX 策略赚积分，6 小时或 1 天一单，到期本金自动回到你自己的钱包。
 > 工具免费、开源、在你自己的电脑上运行。用不用都由你决定，它只是帮你省时间的小工具。
 
@@ -33,11 +35,12 @@
 1. 到 GitHub 下载工具：**只从 Nancy（@nancy_c813）的官方 GitHub 下载**
    直接下载最新版：https://github.com/nancyc0813-maker/termix-autodeposit/archive/refs/heads/main.zip
    （或打开 https://github.com/nancyc0813-maker/termix-autodeposit ，点绿色的「Code」→「Download ZIP」）
-2. 把压缩包解压到 **C:\TermiX** 这类位置。
+2. **先解压，再打开。** 在下载的 ZIP 上按右键 →「全部解压缩」（或 WinRAR「解压到…」），解压到 **C:\TermiX** 这类固定位置。
+   ⚠️ **不要在 WinRAR／压缩档里直接双击里面的文件**，那样只会解出一个文件到暂存资料夹，工具打不开，钥匙也可能存到会被删除的地方（新版工具会跳提示拦下来）。
    ⚠️ 不要放在会自动同步到云端的资料夹（OneDrive、Google Drive；很多电脑的「桌面」「文件」会被同步），否则任务钱包的钥匙可能被上传。
-3. 双击资料夹里的 **Start-TermiX.vbs**。
-   第一次会自动安装需要的组件（约 100MB，2～5 分钟），装好会自动打开控制视窗，桌面也会出现「TermiX AutoDeposit」图标。
-   安装期间请不要重复点。
+3. 打开解压好的资料夹，双击 **Start-TermiX.vbs**。
+   - Windows 可能跳出「安全警告／未知的发行者（Unknown Publisher）」：这是 Windows 对所有网络下载的脚本都会显示的提示，按「**打开**」即可。
+   - 第一次会自动安装需要的组件（约 100MB，2～5 分钟），装好会自动打开控制视窗，桌面也会出现「TermiX AutoDeposit」图标。安装期间请不要重复点。
 4. 之后电脑重开机，工具会自己在背景启动；想看控制视窗，点桌面图标即可。
 
 ---
@@ -132,10 +135,71 @@ AI 会用 `node app/cli.mjs status` 查状态、帮你开始／停止，并用�
 
 - 每轮 gas 约 0.002～0.003 BNB；策略手续费依各策略费率（年化最高 3%），按存款期限计算。
 - 即使某一轮没拿到积分（例如中途被取消），gas 也已经花掉。积分规则以 TermiX 官方为准。
-- 工具每 15 分钟检查一次 GitHub 上的新版本并自动更新（只换程序文件，不动 `data\` 里的钱包钥匙、设置和进行中的单）。每个更新都有作者签名，验证通过才会安装；更新后打不开会自动退回上一版。
+- 工具每 5 分钟检查一次 GitHub 上的新版本并自动更新（只换程序文件，不动 `data\` 里的钱包钥匙、设置和进行中的单）。每个更新都有作者签名，验证通过才会安装；更新后打不开会自动退回上一版。
 - 不想自动更新：右上角「⋯」→ 关掉「自动更新」，之后自己按「检查更新」。
 
 ---
 
 还没注册 TermiX？用我的邀请链接：**https://www.agent.family/r/X8UTKPUM**
 有问题欢迎在控制视窗「⋯」→「回报问题」，或到我的 TG 群：t.me/nancy_c0813
+
+---
+
+<a id="english-guide"></a>
+# English guide
+
+> Auto-deposit into TermiX strategies with your Binance AI wallet to earn points. Each round runs 6 hours (or 1 day); when it ends, your funds return to your own wallet automatically.
+> Free, open source, runs on your own computer.
+
+## 1. Before you start
+1. **A Windows PC** with **Node.js 22.12+** — download the LTS version from https://nodejs.org and click "Next" through the installer.
+2. **Binance App → Wallet → Agentic Wallet**, with **Developer Mode** turned on (Agentic Wallet → Settings → Developer Mode).
+3. In the AI wallet: the **USDC (BSC)** you want to deposit (at least 10U per round) plus **at least 0.008 BNB** for gas (about 0.002–0.003 BNB is used per round).
+
+> Tip: only keep the funds you use for farming in the AI wallet.
+
+## 2. Download & install (once)
+1. Download only from the official repo:
+   https://github.com/nancyc0813-maker/termix-autodeposit/archive/refs/heads/main.zip
+2. **Extract first, then open.** Right-click the ZIP → **Extract All** (or WinRAR "Extract to…") into a fixed folder such as **C:\TermiX**.
+   - ⚠️ **Do not double-click files inside WinRAR / the zip.** That only unpacks one file into a temporary folder: the tool cannot start, and keys could end up in a folder that gets deleted. (The tool now shows a warning and stops.)
+   - ⚠️ Do not use a cloud-synced folder (OneDrive / Google Drive; Desktop and Documents are often synced).
+3. Open the extracted folder and double-click **Start-TermiX.vbs**.
+   - If Windows shows a **Security Warning / Unknown Publisher**, click **Open**. Windows shows this for every script downloaded from the internet.
+   - The first run installs components (~100 MB, 2–5 min), then the control window opens and a **TermiX AutoDeposit** desktop icon appears. Don't click again while it installs.
+4. After a reboot the tool starts by itself in the background; click the desktop icon to open the window.
+
+## 3. First-time setup (about 3 minutes, the window guides you)
+1. **Connect wallet** — scan the QR code with the Binance App, check the pairing code matches, confirm.
+2. **Developer Mode** — turn it on in the App, then click **Re-check**.
+3. **Sign in to TermiX** — automatic.
+4. **Agree to the TermiX Terms** — you must read and tick this yourself.
+5. **Activate agent** — a Binance Agent ID you already hold is activated for free; without one, click **Create agent** (about 0.0002 BNB). Tip: you can claim a free Agent ID in Binance App → Wallet → Agent ID card.
+6. **Inviter** (one-time, can't be changed) — pre-filled with the author's code **X8UTKPUM**; you can change it or leave it empty.
+
+Use the language menu at the top right: 简体中文 / English / 한국어 / Tiếng Việt / 日本語.
+
+## 4. Start
+- **Auto pick (recommended):** set the amount per round (10–1000U) and how many rounds (0 = run forever), then click **Start auto-deposit**.
+- **Pick yourself:** **+ Add strategy**, choose strategy, term (6h or 1 day) and amount for each row, **Save settings**, then **Start**.
+- Points rule: every 1U that completes one round = 100 TP, no matter whether the round is 6h or 1 day — so 6h earns the most.
+
+## 5. Confirmations in the Binance App
+- **First round:** approve 1 USDC fee allowance to the official TermiX escrow **0x6A52…913C** (only once). The App may label it high-risk because it's a new contract — check the address and confirm.
+- **"Unusual recipient / 7702 delegate" warning** when funding the task wallet: the recipient is the task wallet the tool created for you (locked so the strategy can only supply/redeem on Venus). If the address matches the one shown under *In progress*, continue.
+- Can't find the request? Look under *Pending* / notifications on the Agentic Wallet page. Each request is re-sent up to 3 times; if never confirmed, the round is cancelled and funds return.
+
+## 6. Let your AI run it
+Give **给AI的使用说明.md** (AI instructions) in the tool folder to your AI (Claude, Grok, …). It uses `node app/cli.mjs status|start|stop` and tells you, in your language, which steps you must do yourself.
+
+## 7. Safety
+- Funds only move between your Binance AI wallet and the task wallet the tool creates; the return address is always your own wallet.
+- The strategy can only call allowed functions (supply/redeem on Venus, or nothing for hold strategies) — no transfers, borrowing or swaps.
+- Task-wallet keys stay on your PC: `tool folder\data\seed\` and `your user folder\TermiX-AutoDeposit-Backup (DO NOT DELETE)\`. Don't delete or share them while a task wallet holds funds.
+
+## 8. Fees & updates
+- Gas about 0.002–0.003 BNB per round; strategy fees per each strategy's rate (max 3%/year), pro-rated by term.
+- The tool checks GitHub for signed updates **every 5 minutes** and installs them automatically (your keys, settings and active rounds are never touched).
+
+Not on TermiX yet? Invite link: **https://www.agent.family/r/X8UTKPUM**
+Questions: control window **⋯ → Report a problem**, or TG: t.me/nancy_c0813

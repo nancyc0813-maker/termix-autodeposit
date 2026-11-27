@@ -20,7 +20,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -82,6 +82,7 @@ function reloadSettings() {
   settings = n;
 }
 const st = readJson(F.state, null) || readJson(F.state + '.bak', null) || ({ running: false, slots: [], history: [], stats: { rounds: 0, tpEst: 0, refunded: 0 } });
+if (st.setupDone === undefined && st.owner) st.setupDone = true; // 旧版已设定好过的电脑
 st.slots ||= []; st.history ||= []; st.stats ||= { rounds: 0, tpEst: 0, refunded: 0 };
 const save = () => { try { if (existsSync(F.state)) copyFileSync(F.state, F.state + '.bak'); } catch { /* ignore */ } writeJson(F.state, st); };
 const logs = [];
@@ -318,7 +319,11 @@ function tokenExp() {
     return JSON.parse(Buffer.from(m[1].trim().split('.')[1], 'base64url').toString()).exp * 1000;
   } catch { return 0; }
 }
+const BOOT_AT = Date.now(); // 设定好过的电脑：重开后 90 秒内连线还没回来，先显示「处理中」，不闪「首次设置」
 async function refreshEnv(force = false) {
+  try { return await refreshEnvInner(force); } finally { env0.checked = true; if (ready() && !st.setupDone) { st.setupDone = true; save(); } }
+}
+async function refreshEnvInner(force = false) {
   if (!force && Date.now() - env0.checkedAt < 10 * 60_000 && env0.wallet === 'CONNECTED') return;
   env0.checkedAt = Date.now();
   env0.baw = !!BAWJS;
@@ -1054,7 +1059,7 @@ let pairing = null;
 function publicState() {
   return {
     version: VERSION, uiv: UIV, running: st.running, ready: ready(), owner: OWNER,
-    env: { baw: env0.baw, wallet: env0.wallet, devMode: env0.devMode, login: env0.login, terms: env0.terms ? { status: env0.terms.status, version: env0.terms.termsVersion, url: env0.terms.termsUrl, notice: (Array.isArray(env0.terms.notice) ? env0.terms.notice : [env0.terms.notice].filter(Boolean)).map((x) => typeof x === 'string' ? x : [x?.title, x?.body || x?.text].filter(Boolean).join('\n')).join('\n\n').slice(0, 8000) } : null, agent: !!env0.agentId, heldAgent: env0.heldAgent || '', balances: env0.balances },
+    env: { checked: !!env0.checked && (!st.setupDone || Date.now() - BOOT_AT > 90_000), baw: env0.baw, wallet: env0.wallet, devMode: env0.devMode, login: env0.login, terms: env0.terms ? { status: env0.terms.status, version: env0.terms.termsVersion, url: env0.terms.termsUrl, notice: (Array.isArray(env0.terms.notice) ? env0.terms.notice : [env0.terms.notice].filter(Boolean)).map((x) => typeof x === 'string' ? x : [x?.title, x?.body || x?.text].filter(Boolean).join('\n')).join('\n\n').slice(0, 8000) } : null, agent: !!env0.agentId, heldAgent: env0.heldAgent || '', balances: env0.balances },
     pairing, runDone: planOn() ? (() => { const live = settings.plan.filter((r) => !deadPlanIds.has(r.id)); return live.length ? Math.min(...live.map((r) => doneRounds(r.id))) : 0; })() : doneRounds(), settings: { ...settings, tgToken: settings.tgToken ? '已设定' : '' },
     slots: st.slots.map((s) => ({ id: s.id, planId: s.planId || null, termDays: TD(s), step: s.step, stepCn: STEP_CN[s.step], pausedFrom: s.pausedFrom, appWait: s.appWaitUntil && Date.now() < s.appWaitUntil && ['fund', 'pay'].includes(s.step) ? { until: s.appWaitUntil, what: s.appWhat || '' } : null, alloc: s.alloc, strategyName: s.strategyName, provider: s.provider, label: s.label, endsAt: s.endsAt, address: s.address, orderStatus: s.orderStatus, lastErr: s.lastErr, cancelReason: s.cancelReason, principalSwept: !!s.principalSwept, log: (s.log || []).slice(-6) })),
     history: st.history.slice(0, 30).map((s) => ({ id: s.id, alloc: s.alloc, strategyName: s.strategyName, feeFinal: s.feeFinal, ok: OK_DONE.has(s.feeFinal) && !s.cancelReason && !s.shortfall, cancelReason: s.shortfall ? '本金短少，未放款' : s.cancelReason, endsAt: s.endsAt, createdAt: s.createdAt })),
@@ -1235,8 +1240,8 @@ async function updateCheck() {
   if (u.available && !auto && st.updNotified !== u.latest) { st.updNotified = u.latest; save(); notify(u.critical ? `AutoDeposit 有重要更新 v${u.latest}，工具会在空档自动安装。` : `AutoDeposit 有新版本 v${u.latest}。打开工具视窗，点上方「查看更新」即可一键更新（不影响钱包与进行中的单）。`).catch(() => {}); }
   return u;
 }
-setTimeout(() => updateCheck().catch(() => {}), 60_000).unref();
-setInterval(() => updateCheck().catch(() => {}), 15 * 60_000).unref(); // 每 15 分钟看一次官方 GitHub（只读一个约 10KB 的小档案）；必要更新会自动安装
+setTimeout(() => updateCheck().catch(() => {}), 20_000).unref();
+setInterval(() => updateCheck().catch(() => {}), 5 * 60_000).unref(); // 每 5 分钟看一次官方 GitHub（只读一个约 10KB 的小档案）；必要更新会自动安装
 function exitWhenIdle(code, why) {
   log(`${why}（等目前步骤完成）`);
   const t = setInterval(() => {
