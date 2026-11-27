@@ -1,10 +1,10 @@
 {
- "version": "1.0.6",
- "commit": "d3e5b52ee1deca6229887560527494663cc5e3b4",
+ "version": "1.0.7",
+ "commit": "f4f7e8a28f6c490ebb7d30b69b81e552ecaab020",
  "critical": true,
  "notes": {
-  "zh": "必要更新：清楚说明 USDC 和 BNB 各是做什么用、每单实际只花约 0.002 BNB、本金全部退回。",
-  "en": "Required update: clear explanation of what USDC and BNB are for; each round really uses about 0.002 BNB and principal comes back in full."
+  "zh": "必要更新：全面检查后的修正——五种语言完整翻译、状态显示更准确、App 确认提醒更完整、说明更清楚。",
+  "en": "Required update: full-audit fixes — complete translations in all 5 languages, accurate status, complete App confirmation reminders, clearer explanations."
  },
  "files": [
   {
@@ -14,18 +14,18 @@
   },
   {
    "path": "README.md",
-   "sha256": "973acc58157e26f69dc181722adfaf9434c2600c0fc003dc2fde74b58d53c377",
-   "size": 14623
+   "sha256": "2390cefc44f75452ee510ae17a093ccaeed39fe34748c5ab7dc22b37fffab818",
+   "size": 15726
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "d63b021a4c75fa24b3ef96f6ec84e6c7a2c33ffc5abcf74bc0400c6558ac1d44",
+   "sha256": "eb9b713c6cb11be0c944712243d0ba743638655b429055f3fa3f5a3befb9da10",
    "size": 8663
   },
   {
    "path": "Start-TermiX.vbs",
-   "sha256": "104a2407f9bc45bf01e569e41f26a36fd5bcde2caf81a36e16bd48775a545f33",
-   "size": 2994
+   "sha256": "5a63851ca505e9a2c0c11cea913bd7df678b821be4afb170996234e6c9db6290",
+   "size": 4052
   },
   {
    "path": "app/app-icon.svg",
@@ -39,13 +39,13 @@
   },
   {
    "path": "app/cli.mjs",
-   "sha256": "3060f8b76036ac9eb610276058b28ffbde5c82a3576ea89a190d1ecc98caa393",
-   "size": 9243
+   "sha256": "5da818707365c4c091c7aa4689dafcd0103b94f4050e964a3f3e4b959191607b",
+   "size": 9584
   },
   {
    "path": "app/launcher.mjs",
-   "sha256": "3211dd114a3b2b88f990cb2ba8f84fbd10fefba53ac5afea2eb08d37e8194acc",
-   "size": 14709
+   "sha256": "2990d921f67d615baa5e02a50b7d1010ac55b3786c0261d93f021096f498b863",
+   "size": 18894
   },
   {
    "path": "app/openapp.mjs",
@@ -54,17 +54,17 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "617d27c936ebadd2ac70aed6f1f49eeab78c3bac8ea63793d9074c3ce731e698",
-   "size": 106209
+   "sha256": "1c6f0a87f4b41e9e1cc099d1da5e281500b3e1fe46aabb05c6469f525e268a4b",
+   "size": 107826
   },
   {
    "path": "app/ui.html",
-   "sha256": "ccfc36cd952c341b935658f1dbddf7f6da5a184fd8372087b930f254122663db",
-   "size": 234973
+   "sha256": "18f9accefe3a4b38d55646dfdc54d12ba5f66e2483daa525163b013abdff98e4",
+   "size": 261943
   },
   {
    "path": "app/updater.mjs",
-   "sha256": "aca6c0e292fcf891cbf2faab5de8a7810d37157609f4252245c8a2456781522c",
+   "sha256": "c26d582be3d75c60b8fa229a60dbc4616961f1416b34aa3788be00dd50813980",
    "size": 6654
   },
   {
@@ -399,15 +399,15 @@
   },
   {
    "path": "使用说明.txt",
-   "sha256": "88d739df787a1f35cce00e6fd03c0eab288a9b7286718ad44107eb2c0afb2bf2",
-   "size": 10666
+   "sha256": "05a519e67ff2c0315241fafdb9724d1520605d106a8f5d3ffc638c7013dfff1f",
+   "size": 10725
   },
   {
    "path": "给AI的使用说明.md",
-   "sha256": "1765608cafd489bd1674bee94d36f3fe99f07d136d7ff8178f219c62aba7e711",
-   "size": 4379
+   "sha256": "5c2ff7f561359e5e5bfe5a7fe96d65ccdbee465ba88c4245622d08e030447611",
+   "size": 4429
   }
  ],
- "publishedAt": "2026-11-27T16:53:38.969Z",
- "sig": "6Z3TkHZxHivIh7pTqVMI6lcUzAUcETeuhTTaGmRFHAWb+0hLuE8gHjuyRVEmLn4hIojevDHin2T1eLLpG4x3AA=="
+ "publishedAt": "2026-11-27T17:27:32.275Z",
+ "sig": "ruCLG2v+Gwaxz9qSB4yJxaCnkWeNeYNtdkn3wpquguPxxj4X7U8JFWFMGCUy7QrC+9a1AM4uBH9tUJI3nS2LAQ=="
 }
