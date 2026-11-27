@@ -1,10 +1,10 @@
 {
- "version": "1.0.0",
- "commit": "961017fa708200e74ffe22a8b43882dbc08667c6",
- "critical": false,
+ "version": "1.0.1",
+ "commit": "a2d668742feceb388f3533e81d805c574c4774b5",
+ "critical": true,
  "notes": {
-  "zh": "TermiX AutoDeposit 1.0 正式版",
-  "en": "TermiX AutoDeposit 1.0 release"
+  "zh": "修复：到期收回本金时，若任务钱包留有极少量 Venus 零头，会一直收回失败。此为必要更新。",
+  "en": "Fix: principal recall failed when a tiny Venus vUSDC balance remained in the task wallet. Required update."
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "989afab1446570a22786db2032b6c17e4d1eb3f8448df25b64757fc9d6157a90",
+   "sha256": "fd875102b5ce26050e371b33dccd454d2e5588aec88491351984d09bfc5a4f26",
    "size": 8663
   },
   {
@@ -54,7 +54,7 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "2034736173f5ac4f9fb01db475e6590de50c8f01e6591961aded844684f1bdc5",
+   "sha256": "c050df06095f67f383b72e6a3c4ac03cc1081a4510c49055a446a40b6cef1a69",
    "size": 101665
   },
   {
@@ -369,8 +369,8 @@
   },
   {
    "path": "skills/termix-agent-skills/scripts/quant-client-local.mjs",
-   "sha256": "718b350f30de43a6dbca351ad814cb424d7bed2b1c024eb7588b97cf379f057a",
-   "size": 51827
+   "sha256": "50e2598f2e8cf1b6928d504b4b3d551d14d0853791332f3c0f0c4815943bc5fc",
+   "size": 52207
   },
   {
    "path": "skills/termix-agent-skills/scripts/quant-provider-enc-key.mjs",
@@ -399,7 +399,7 @@
   },
   {
    "path": "使用说明.txt",
-   "sha256": "72cc3cfc8749be88840d19fe6583fa72ff1200bc996d8c1b32dbca5b1d48789d",
+   "sha256": "6d31ac9ce3798dc46e4d0c4fb3138f490772ef17fa1bddfd5c34b5d3c86138d3",
    "size": 10293
   },
   {
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T11:56:13.711Z",
- "sig": "B1uP1bEojvekwvDsF9X16n/TH5Be8R2ha+7Md2wfvrupBJsHlzXRDP9VcK37jXijVbdCpvvFPd+DgTSRohvKAQ=="
+ "publishedAt": "2026-11-27T14:47:03.555Z",
+ "sig": "5DcvjaHN5RF5+UE9KfaSoKBfmqf/M1tsh7maTz9Mi1RiPT+qnDZvrBLRD8OP+ayQA22IxdNXk4hFuy/2gNdiAA=="
 }
