@@ -1,13 +1,13 @@
 // TermiX 自动存款（币安 AI 钱包）— 本地引擎 + 控制页面
 // 只在使用者自己的电脑运行；只连 TermiX 官方 API、BNB 链 RPC、可选 Telegram；
-// 使用者亲自按「回报问题」时，才会把去掉敏感资讯的错误纪录送给作者（REPORT_URL），不会自动上传。
+// 使用者亲自按「反馈问题」时，才会把去掉敏感资讯的错误记录送给作者（REPORT_URL），不会自动上传。
 // 安全原则：
 //   1. 本金只在「使用者币安 AI 钱包」⇄「本工具产生的任务钱包」之间移动；收回目的地固定是使用者钱包，没有可改的转出地址。
 //      给策略方的权限是「函数层级」：Venus 存款类只能 vUSDC.mint / redeem / redeemUnderlying、comptroller.enterMarkets；USDC 持有类没有任何操作权限（不能转帐、借款、换币）。
-//   2. 每一步动钱前先读链上余额／付款纪录，做过的不重做（不会重复转账或重复付费）。
+//   2. 每一步动钱前先读链上余额／付款记录，做过的不重做（不会重复转账或重复付费）。
 //   3. 付费只送 TermiX 官方托管合约，金额上限由本机依策略费率计算；只存 Nancy 的 Venus 存款类与 USDC 持有类策略。
 //   4. 任何非预期状况 → 该笔暂停并提醒，不继续动钱。
-//   5. 控制页面只接受本机连线 + 随机通行码；不开 CORS。
+//   5. 控制页面只接受本机连接 + 随机访问码；不开 CORS。
 //   6. 在线更新只读官方 GitHub、只接受作者签名过的清单，且只更新程序文件（updater.mjs），不碰 data/。
 import http from 'node:http';
 import { spawn, execSync } from 'node:child_process';
@@ -20,8 +20,8 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.6';
-const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
+const VERSION = '1.0.7';
+const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误反馈收件箱（只收使用者按下「反馈问题」发送的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const DATA = join(ROOT, 'data');
@@ -30,12 +30,12 @@ const SK = join(ROOT, 'skills', 'termix-agent-skills', 'scripts');
 const DEPS = ROOT; // node_modules 放在工具根目录（技能脚本从上层目录找得到套件）
 let PORT = Number(process.env.ANCHOR_PORT || 0) || (() => { try { const n = Number(readFileSync(join(ROOT, 'data', '.port'), 'utf8')); return n >= 17890 && n <= 17899 ? n : 17890; } catch { return 17890; } })();
 const BAW_MODE = (() => { try { return readFileSync(join(ROOT, 'data', '.baw-mode'), 'utf8').trim(); } catch { return 'global'; } })();
-// 独立模式：币安钱包工具用「网卡 MAC」当登入资料的加密钥匙，电脑多了 VPN／虚拟网卡时会变，导致登入失效。
-// 改用本工具自己的固定识别码，登入资料才不会莫名失效。
+// 独立模式：币安钱包工具用「网卡 MAC」当登入信息的加密密钥，电脑多了 VPN／虚拟网卡时会变，导致登入失效。
+// 改用本工具自己的固定识别码，登入信息才不会莫名失效。
 const INSTANCE_ID = BAW_MODE !== 'private' ? '' : (() => { const f = join(ROOT, 'data', '.instance-id'); try { const v = readFileSync(f, 'utf8').trim(); if (/^[0-9a-f]{32}$/.test(v)) return v; } catch { /* 第一次 */ } const v = randomBytes(16).toString('hex'); try { mkdirSync(join(ROOT, 'data'), { recursive: true }); writeFileSync(f, v); } catch { /* ignore */ } return v; })();
-const TEST_STRATEGY = String(process.env.ANCHOR_DEV_TEST_STRATEGY || ''); // 仅开发者实测用；设定档／介面无法开启
+const TEST_STRATEGY = String(process.env.ANCHOR_DEV_TEST_STRATEGY || ''); // 仅开发者实测用；设置档／介面无法开启
 mkdirSync(DATA, { recursive: true });
-process.env.ANCHOR_DEPS_DIR = DEPS; // 让本进程载入技能模组时也找得到套件
+process.env.ANCHOR_DEPS_DIR = DEPS; // 让本进程加载技能模组时也找得到套件
 
 const req = createRequire(join(DEPS, 'package.json'));
 const { createPublicClient, http: viemHttp, fallback, parseAbi, formatUnits, parseUnits, getAddress } = req('viem');
@@ -74,15 +74,15 @@ const readJson = (f, d) => { try { return JSON.parse(readFileSync(f, 'utf8')); }
 const writeJson = (f, o) => { writeFileSync(f + '.tmp', JSON.stringify(o, null, 1)); renameSync(f + '.tmp', f); };
 const DEFAULT_SETTINGS = { maxPerRoundU: 20, maxRounds: 0, approveUsdc: 1, tgToken: '', tgChatId: '', plan: [], autoUpdate: true }; // plan 空 = 自动挑选；否则 [{ id, strategyId, termDays, amount }]
 let settings = { ...DEFAULT_SETTINGS, ...readJson(F.settings, {}) };
-delete settings.testStrategyId; delete settings.allowOthers; delete settings.maxSlots; // 旧版设定一律忽略
-// 每次循环重读设定档：改设定（金额、轮数）不用重新启动
+delete settings.testStrategyId; delete settings.allowOthers; delete settings.maxSlots; // 旧版设置一律忽略
+// 每次循环重读设置档：改设置（金额、轮数）不用重新启动
 function reloadSettings() {
   const f = readJson(F.settings, null); if (!f) return;
   const n = { ...DEFAULT_SETTINGS, ...f }; delete n.testStrategyId; delete n.allowOthers; delete n.maxSlots;
   settings = n;
 }
 const st = readJson(F.state, null) || readJson(F.state + '.bak', null) || ({ running: false, slots: [], history: [], stats: { rounds: 0, tpEst: 0, refunded: 0 } });
-if (st.setupDone === undefined && st.owner) st.setupDone = true; // 旧版已设定好过的电脑
+if (st.setupDone === undefined && st.owner) st.setupDone = true; // 旧版已设置好过的电脑
 st.slots ||= []; st.history ||= []; st.stats ||= { rounds: 0, tpEst: 0, refunded: 0 };
 const save = () => { try { if (existsSync(F.state)) copyFileSync(F.state, F.state + '.bak'); } catch { /* ignore */ } writeJson(F.state, st); };
 const logs = [];
@@ -133,8 +133,8 @@ try {
   BAWJS = join(dir, typeof pj.bin === 'string' ? pj.bin : Object.values(pj.bin)[0]);
 } catch { /* setup 页面会提示安装 */ }
 
-let OWNER = ''; // 使用者币安 AI 钱包地址（从钱包本身读取，不能被设定改写）
-let ownerConflict = false; // 钱包地址与纪录不符时，封锁一切动钱
+let OWNER = ''; // 使用者币安 AI 钱包地址（从钱包本身读取，不能被设置改写）
+let ownerConflict = false; // 钱包地址与记录不符时，封锁一切动钱
 let ownerVerified = false; // 本次启动后是否已从钱包本身确认过地址
 let otherInstance = ''; // 同一个币安钱包已有另一份工具在运行（路径），本份完全不动钱
 function cleanEnv() {
@@ -185,7 +185,13 @@ function run(script, args, { timeoutMs = 300_000, extraEnv = {} } = {}) {
     child.on('error', (e) => { clearTimeout(t); res({ code: -1, out, err: e.message, all: e.message, json: null }); });
   });
 }
-const lastLine = (s) => scrub(String(s || '').trim().split('\n').filter(Boolean).slice(-1)[0] || '').slice(0, 220);
+const lastLine = (s) => {
+  const L = String(s || '').trim().split('\n').map((x) => x.trim()).filter(Boolean);
+  if (L.some((x) => /no session|not signed in|session (token )?expired|401|unauthorized/i.test(x))) return 'TermiX 登录过期，正在自动重新登录';
+  // 优先取真正的错误行（Error: …），不要取最后一行的「下一步提示命令」
+  const e = L.find((x) => /error|failed|revert|insufficient|denied|rejected|timeout/i.test(x) && !/^node scripts\//.test(x)) || L.filter((x) => !/^node scripts\//.test(x)).slice(-1)[0] || L.slice(-1)[0] || '';
+  return scrub(e).slice(0, 220);
+};
 const needsApp = (s) => /needs approval in the Binance App|PENDING_CONFIRMATION|must approve this/i.test(s);
 const appRejected = (s) => /(rejected|declined|denied) by (the )?user|user (rejected|declined|denied|cancel)|rejected in (the )?(Binance )?App/i.test(s); // 用户在币安 App 按了拒绝
 
@@ -223,11 +229,11 @@ async function taskValue(addr) { // 任务钱包的 USDC 价值（含 Venus 存�
   return u + (vb * er) / 10n ** 18n;
 }
 
-// ── 种子备份（任务钱包唯一的钥匙）───────────────────────────────────────────
+// ── 种子备份（任务钱包唯一的密钥）───────────────────────────────────────────
 const HOME = process.env.USERPROFILE || process.env.HOME || ROOT;
-// 钥匙备份资料夹：新安装用英文名（各语言用户都看得懂）；旧版已建立的中文资料夹继续沿用，绝不搬动钥匙
+// 密钥备份文件夹：新安装用英文名（各语言用户都看得懂）；旧版已建立的中文文件夹继续沿用，绝不搬动密钥
 const BACKUP2 = (() => {
-  const f = join(DATA, '.backup-dir'); // 第一次决定后就记住，之后永远用同一个资料夹（避免和旧版的资料夹混用）
+  const f = join(DATA, '.backup-dir'); // 第一次决定后就记住，之后永远用同一个文件夹（避免和旧版的文件夹混用）
   try { const p = readFileSync(f, 'utf8').trim(); if (p) return p; } catch { /* 第一次 */ }
   const old = join(HOME, 'TermiX-自动存款-备份（不要删除）');
   const p = existsSync(old) ? old : join(HOME, 'TermiX-AutoDeposit-Backup (DO NOT DELETE)');
@@ -243,29 +249,29 @@ function seedSafeRaw() {
   const f = join(SEED_DIR, 'task-wallet-seed.hex');
   if (!existsSync(f)) return { ok: false, why: '种子尚未产生' };
   const main = readFileSync(f, 'utf8').trim();
-  if (!/^[0-9a-f]{64}$/i.test(main)) return { ok: false, why: '种子档损坏' };
+  if (!/^[0-9a-f]{64}$/i.test(main)) return { ok: false, why: '种子文件损坏' };
   const h = createHash('sha256').update(main).digest('hex');
-  // 钥匙绑定钱包：钥匙只属于第一次使用它的币安钱包；资料夹被复制到别人的电脑／换钱包时，拒绝动钱
+  // 密钥绑定钱包：密钥只属于第一次使用它的币安钱包；文件夹被复制到别人的电脑／换钱包时，拒绝动钱
   const ownerFile = join(SEED_DIR, 'owner.txt');
   if (OWNER && ownerVerified) {
     if (!existsSync(ownerFile)) writeFileSync(ownerFile, OWNER);
     const bound = readFileSync(ownerFile, 'utf8').trim();
-    if (bound.toLowerCase() !== OWNER.toLowerCase()) return { ok: false, why: `这把任务钱包钥匙属于 ${bound}，与目前的币安钱包 ${OWNER} 不同。请勿复制别人的工具资料夹；若是你自己换了钱包，请换回原钱包。` };
+    if (bound.toLowerCase() !== OWNER.toLowerCase()) return { ok: false, why: `这把任务钱包密钥属于 ${bound}，与目前的币安钱包 ${OWNER} 不同。请勿复制别人的工具文件夹；若是你自己换了钱包，请换回原钱包。` };
   }
-  // 第二份备份按钱包地址分资料夹：同一台电脑多个币安钱包各自独立，不会互相还原到别人的钥匙
+  // 第二份备份按钱包地址分文件夹：同一台电脑多个币安钱包各自独立，不会互相还原到别人的密钥
   const copies = [join(SEED_DIR, 'backup', 'task-wallet-seed.hex'), ...(OWNER && ownerKnown() ? [join(BACKUP2, OWNER.toLowerCase(), 'task-wallet-seed.hex')] : [])];
   for (const c of copies) {
     try {
       mkdirSync(dirname(c), { recursive: true });
       if (!existsSync(c)) copyFileSync(f, c);
       const v = readFileSync(c, 'utf8').trim();
-      if (createHash('sha256').update(v).digest('hex') !== h) return { ok: false, why: `备份 ${c} 与主种子不一致，已停止（请勿删除任何种子档，联系作者）` };
+      if (createHash('sha256').update(v).digest('hex') !== h) return { ok: false, why: `备份 ${c} 与主种子不一致，已停止（请勿删除任何种子文件，联系作者）` };
     } catch (e) { return { ok: false, why: '无法写入备份：' + e.message }; }
   }
-  try { if (!existsSync(join(BACKUP2, '说明.txt'))) writeFileSync(join(BACKUP2, '说明.txt'), 'This folder backs up the TermiX AutoDeposit task-wallet keys. Never delete it while a task wallet holds funds, and never share it.\r\n\r\n这个资料夹是 TermiX 自动存款「任务钱包」的钥匙备份。\r\n只要任务钱包里还有钱，就绝对不要删除，也不要给任何人看。\r\n每个子资料夹以币安钱包地址命名。工具资料夹不见时，把对应地址资料夹里的 task-wallet-seed.hex 放回 工具\\data\\seed\\ 即可找回。\r\n'); } catch { /* ignore */ }
+  try { if (!existsSync(join(BACKUP2, '说明.txt'))) writeFileSync(join(BACKUP2, '说明.txt'), 'This folder backs up the TermiX AutoDeposit task-wallet keys. Never delete it while a task wallet holds funds, and never share it.\r\n\r\n这个文件夹是 TermiX 自动存款「任务钱包」的密钥备份。\r\n只要任务钱包里还有钱，就绝对不要删除，也不要给任何人看。\r\n每个子文件夹以币安钱包地址命名。工具文件夹不见时，把对应地址文件夹里的 task-wallet-seed.hex 放回 工具\\data\\seed\\ 即可找回。\r\n'); } catch { /* ignore */ }
   return { ok: true, hash: h.slice(0, 8) };
 }
-// v1.0 单一钱包时代的旧备份位置，只属于当初那台电脑的旧安装（共用模式且已有纪录）；新安装绝不能还原它，否则会拿到别人的任务钱包钥匙
+// v1.0 单一钱包时代的旧备份位置，只属于当初那台电脑的旧安装（共用模式且已有记录）；新安装绝不能还原它，否则会拿到别人的任务钱包密钥
 const LEGACY_SEED = BAW_MODE === 'global' && !!st.owner;
 // 种子不存在时，从备份还原（只还原，不覆盖）
 (function restoreSeedIfMissing() {
@@ -278,12 +284,12 @@ const LEGACY_SEED = BAW_MODE === 'global' && !!st.owner;
   }
 })();
 
-// 收回目的地是否可信：本次已从钱包确认过，或与钥匙绑定的钱包地址（seed/owner.txt）一致（离线、电脑重开时也能收回）
+// 收回目的地是否可信：本次已从钱包确认过，或与密钥绑定的钱包地址（seed/owner.txt）一致（离线、电脑重开时也能收回）
 function ownerKnown() {
   if (ownerVerified) return true;
   try { const b = readFileSync(join(SEED_DIR, 'owner.txt'), 'utf8').trim(); return !!OWNER && b.toLowerCase() === OWNER.toLowerCase(); } catch { return false; }
 }
-// 一个币安钱包只能由一份工具操作：避免两份工具（例如新旧版本在不同资料夹）互相收回对方正在跑的任务钱包
+// 一个币安钱包只能由一份工具操作：避免两份工具（例如新旧版本在不同文件夹）互相收回对方正在跑的任务钱包
 let lockOwned = false;
 function walletLock() {
   if (!OWNER || !ownerKnown()) return;
@@ -293,7 +299,7 @@ function walletLock() {
     let alive = false;
     if (o && o.pid) { try { process.kill(Number(o.pid), 0); alive = true; } catch (e) { alive = e.code === 'EPERM'; } }
     const other = o && o.root && o.root !== ROOT && alive && Date.now() - Number(o.at || 0) < 3 * 60_000;
-    // 同时启动时两份都以为自己拿到锁：用资料夹路径决胜（固定规则，不会来回抢）
+    // 同时启动时两份都以为自己拿到锁：用文件夹路径决胜（固定规则，不会来回抢）
     if (other && !(lockOwned && ROOT < o.root)) {
       if (otherInstance !== o.root) { log(`这个币安钱包已经由另一份工具在运行（${o.root}），这份不开新单`, 'warn'); notify(`同一个币安钱包装了两份工具，这份（${ROOT}）不再开新单，只把自己进行中的单收完。请只保留 ${o.root} 那份。`); }
       otherInstance = o.root; lockOwned = false; st.running = false; return;
@@ -319,7 +325,7 @@ function tokenExp() {
     return JSON.parse(Buffer.from(m[1].trim().split('.')[1], 'base64url').toString()).exp * 1000;
   } catch { return 0; }
 }
-const BOOT_AT = Date.now(); // 设定好过的电脑：重开后 90 秒内连线还没回来，先显示「处理中」，不闪「首次设置」
+const BOOT_AT = Date.now(); // 设置好过的电脑：重开后 90 秒内连接还没回来，先显示「处理中」，不闪「首次设置」
 async function refreshEnv(force = false) {
   try { return await refreshEnvInner(force); } finally { env0.checked = true; if (ready() && !st.setupDone) { st.setupDone = true; save(); } }
 }
@@ -378,7 +384,7 @@ async function refreshEnvInner(force = false) {
 if (st.owner && /^0x[0-9a-fA-F]{40}$/.test(st.owner)) OWNER = st.owner;
 const ready = () => env0.wallet === 'CONNECTED' && env0.devMode?.enabled && env0.login && env0.terms?.status === 'accepted' && !!env0.agentId && !!OWNER && (!existsSync(join(SEED_DIR, 'task-wallet-seed.hex')) || seedSafe().ok);
 
-// 官方积分与邀请人（公开资料，免登入）
+// 官方积分与邀请人（公开信息，免登入）
 const DEFAULT_INVITE = 'X8UTKPUM'; // 工具作者 Nancy 的邀请码；使用者可自行改成别的或不绑
 let rewards = { at: 0, v: null };
 async function refreshRewards(force = false) {
@@ -491,6 +497,13 @@ function fail(s, e) {
     notify(`一笔 ${s.alloc}U 在准备阶段一直出错，已取消并自动收回本金。原因：${s.lastErr}`);
     return;
   }
+  if (s.errCount >= 8 && ['allocate', 'register'].includes(s.step)) {
+    // 准备阶段还没动到钱：安静取消，不要停在「暂停」挡住后面的单
+    s.cancelReason = '准备阶段失败，没有动到钱'; s.principalSwept = true; s.step = 'done'; s.errCount = 0; s.nextTryAt = 0;
+    if (s.strategyId) cooldown[s.strategyId] = Date.now() + 30 * 60_000;
+    slotLog(s, '准备阶段失败，没有动到钱，已取消（稍后自动再开新单）');
+    return;
+  }
   if (s.errCount >= 8 && s.step !== 'paused') {
     s.pausedFrom = s.step; s.step = 'paused';
     notify(`一笔 ${s.alloc}U 存款在「${STEP_CN[s.pausedFrom]}」一直出错，已暂停（钱在任务钱包 ${s.address || '(尚未转入)'}，可按「全部收回」取回）。原因：${s.lastErr}`);
@@ -517,7 +530,7 @@ async function stepSlot(s) {
       if (st.slots.some((o) => o !== s && o.address && !o.principalSwept && o.address.toLowerCase() === String(addr).toLowerCase())) throw new Error('平台分配到的任务钱包正被另一笔使用，已拒绝（不会把两笔钱放进同一个钱包）');
       s.address = getAddress(addr); s.seed = sf.hash;
       st.wallets ||= []; if (!st.wallets.some((w) => w.address === s.address)) st.wallets.push({ index: s.index, address: s.address });
-      return ok(s, 'fund', `任务钱包 ${s.address}（钥匙已备份）`);
+      return ok(s, 'fund', `任务钱包 ${s.address}（密钥已备份）`);
     }
     case 'fund': {
       const sf = seedSafe(true); if (!sf.ok || sf.hash !== s.seed) throw new Error('种子备份检查未通过：' + (sf.why || '种子与登记时不同'));
@@ -528,7 +541,7 @@ async function stepSlot(s) {
       if (hb < (gas * 9n) / 10n) intents.push({ action: 'fund-gas', to: s.address, value: (gas - hb).toString(), data: '0x' });
       if (!intents.length) { s.fundedOk = true; s.appWaitUntil = 0; return ok(s, 'create', `已到账：${U(hu)} USDC + ${U(hb)} BNB`); }
       if (s.appWaitUntil && hu >= need) s.appWaitUntil = 0; // 本金已到账（只差 gas）：不用再等 App
-      if (s.fundSentAt && now - s.fundSentAt < 5 * 60_000) return; // 上次送出后 5 分钟内只等到账，绝不重送
+      if (s.fundSentAt && now - s.fundSentAt < 5 * 60_000) return; // 上次发送后 5 分钟内只等到账，绝不重送
       if (s.appWaitUntil && now < s.appWaitUntil) return; // 等使用者在 App 确认，期间不重送
       // 币安钱包余额检查
       const [ou, ob] = await Promise.all([bal(A.USDC, OWNER), bnb(OWNER)]);
@@ -540,7 +553,7 @@ async function stepSlot(s) {
       slotLog(s, `转入 ${U(wantU)} USDC + ${U(wantB)} BNB 到任务钱包`);
       s.fundSentAt = now; save();
       const r = await run('aacp-tx.mjs', ['--intents', JSON.stringify(intents), '--yes'], { timeoutMs: 240_000 });
-      if (needsApp(r.all) || appRejected(r.all)) s.fundPrompts = (s.fundPrompts || 0) + 1; // 只算「请你在 App 确认／你按了拒绝」，网路或节点错误不算
+      if (needsApp(r.all) || appRejected(r.all)) s.fundPrompts = (s.fundPrompts || 0) + 1; // 只算「请你在 App 确认／你按了拒绝」，网络或节点错误不算
       if (needsApp(r.all)) {
         s.fundSentAt = 0;
         s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fund'; await notify('请打开币安 App 确认转入本金的交易', { tag: s.id }); return; }
@@ -550,7 +563,7 @@ async function stepSlot(s) {
         if (u2 >= need && b2 >= (gas * 9n) / 10n) { s.fundedOk = true; return ok(s, 'create', '本金与 gas 已到账'); }
         await new Promise((r2) => setTimeout(r2, 5000));
       }
-      throw new Error('转账已送出但还没看到到账，下一轮再查（不会重送已到账的部分）');
+      throw new Error('转账已发送但还没看到到账，下一轮再查（不会重送已到账的部分）');
     }
     case 'create': {
       // 当机重启保护：这个任务钱包若已经有委托单，直接沿用，不重复建立
@@ -595,11 +608,11 @@ async function stepSlot(s) {
       const j = await getJob(s.jobId);
       if (!j.sessionPublicKey || ['DRAFT', 'REVOKED', 'CANCELLED'].includes(j.status)) throw new Error(`授权后状态异常：${j.status}`);
       s.jobStatusSeen = j.status;
-      // 授权范围由本机程式依写死的白名单产生（函数层级），不依赖后台回传
+      // 授权范围由本机程序依写死的白名单产生（函数层级），不依赖后台回传
       s.endsAt = Date.parse(j.endsAt); s.startedAt = Date.parse(j.startedAt);
       s.endsCap = (s.deliverAt || Date.now()) + TD(s) * 86400_000 + 30 * 60_000; // 后台给的到期时间不得超过本机计算的上限
       if (!Number.isFinite(s.endsAt) || s.endsAt > s.endsCap) s.endsAt = s.endsCap;
-      return ok(s, 'checkout', `已授权，${new Date(s.endsAt).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Taipei', hour12: false })} 到期`);
+      return ok(s, 'checkout', `已授权，${new Date(s.endsAt).toLocaleTimeString('zh-CN', { hour12: false })} 到期`);
     }
     case 'checkout': {
       const r = await run('quant-client-local.mjs', ['checkout', '--job', s.jobId], { timeoutMs: 120_000 });
@@ -613,11 +626,11 @@ async function stepSlot(s) {
       const j0 = await getJob(s.jobId);
       if (j0.orderId) { s.orderId = j0.orderId; s.orderedAt ||= now; return ok(s, 'wait_accept', '手续费已付（已确认）'); }
       if (s.orderSentAt) {
-        // createOrder 已经送出过：只做「补登记」，绝不再送第二次付款
+        // createOrder 已经发送过：只做「补登记」，绝不再送第二次付款
         try { await api('POST', `/api/v1/checkout/${s.checkoutId}/recover`, {}); } catch { /* 还没上链或已登记 */ }
         const j1 = await getJob(s.jobId);
         if (j1.orderId) { s.orderId = j1.orderId; s.orderedAt = now; return ok(s, 'wait_accept', '手续费已付（补登记完成）'); }
-        if (now - s.orderSentAt > 60 * 60_000) { await abortSlot(s, '付款后 60 分钟仍未登记，先收回本金'); await notify('一笔付款送出 60 分钟仍未在平台登记，已先收回本金，订单会持续追踪'); return ok(s, 'sweep'); }
+        if (now - s.orderSentAt > 60 * 60_000) { await abortSlot(s, '付款后 60 分钟仍未登记，先收回本金'); await notify('一笔付款发送 60 分钟仍未在平台登记，已先收回本金，订单会持续追踪'); return ok(s, 'sweep'); }
         return;
       }
       s.checkoutAt ||= now;
@@ -631,9 +644,9 @@ async function stepSlot(s) {
         // 上次付款尝试中断过：先查链上有没有「你的钱包 → 托管合约」的 USDC 转账，有就只补登记，绝不重付
         const logs = await escrowPayLogs(BigInt(s.payBlock)).catch(() => null);
         if (logs === null) {
-          // 查不到链上纪录也不能无限等：超过 2 小时先收回本金，手续费交给「找回手续费」步骤继续追
+          // 查不到链上记录也不能无限等：超过 2 小时先收回本金，手续费交给「找回手续费」步骤继续追
           if (now - s.checkoutAt > 2 * 3600_000) { s.orderSentAt ||= now; s.payUnknown = true; save(); await abortSlot(s, '无法确认手续费是否已付'); return ok(s, 'sweep'); }
-          throw new Error('无法查询链上付款纪录，稍后再试');
+          throw new Error('无法查询链上付款记录，稍后再试');
         }
         if (logs.length) { s.orderSentAt ||= now; save(); return; }
         if (now - (s.payAttemptAt || 0) < 5 * 60_000) return;
@@ -646,7 +659,7 @@ async function stepSlot(s) {
       const approveWei = (() => { const one = parseUnits('1', 18), five = parseUnits('5', 18); let w = maxFeeWei * 2n; if (w < one) w = one; if (w > five) w = five; return w; })();
       const r = await run('quant-client-local.mjs', ['escrow-fee', '--checkout', s.checkoutId, '--yes'], { timeoutMs: 300_000, extraEnv: { ANCHOR_MAX_FEE_WEI: String(maxFeeWei), ANCHOR_APPROVE_WEI: String(approveWei) } });
       if (/sent createOrder|createOrderTx/.test(r.all)) { s.orderSentAt = now; save(); }
-      if (!s.orderSentAt && (needsApp(r.all) || appRejected(r.all))) { s.appPrompts = (s.appPrompts || 0) + 1; save(); } // 只算「App 确认／拒绝」，网路或节点错误不算（另有 2 小时上限）
+      if (!s.orderSentAt && (needsApp(r.all) || appRejected(r.all))) { s.appPrompts = (s.appPrompts || 0) + 1; save(); } // 只算「App 确认／拒绝」，网络或节点错误不算（另有 2 小时上限）
       if (!s.orderSentAt && /refusing/i.test(r.all)) { await abortSlot(s, '手续费交易内容不符安全规则，已拒绝付款'); await notify(`一笔 ${s.alloc}U：后台送来的付费交易不符安全规则，已拒绝并收回本金。原因：${lastLine(r.all)}`); return ok(s, 'sweep'); }
       if (needsApp(r.all) && /createOrder/.test(r.all)) { s.orderSentAt = now; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-pay'; save(); await notify('请在币安 App 确认「付手续费」交易', { tag: s.id }); return; }
       if (needsApp(r.all) && !s.orderSentAt) {
@@ -658,7 +671,7 @@ async function stepSlot(s) {
     }
     case 'wait_accept': {
       const o = await getOrder(s.orderId);
-      s.orderStatus = o.status; s.lastErr = ''; s.errCount = 0; // 查到订单就清掉之前的连线错误，避免画面一直显示旧错误
+      s.orderStatus = o.status; s.lastErr = ''; s.errCount = 0; // 查到订单就清掉之前的连接错误，避免画面一直显示旧错误
       if (o.status === 'PENDING_ACCEPT') {
         if (now - s.orderedAt < ACCEPT_TIMEOUT_MS) return;
         const hard = now - s.orderedAt > ACCEPT_TIMEOUT_MS + 60 * 60_000;
@@ -668,7 +681,7 @@ async function stepSlot(s) {
         assertEscrowIntent(it, '取消订单');
         let r; try { r = await sendIntent(it, '取消订单'); } catch (e) { s.cancelErrs = (s.cancelErrs || 0) + 1; save(); throw e; }
         if (r.app) {
-          s.cancelPrompts = (s.cancelPrompts || 0) + 1;
+          s.cancelPrompts = (s.cancelPrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'cancel';
           s.nextTryAt = now + 15 * 60_000; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); return;
         }
         st.noAccept = (st.noAccept || 0) + 1;
@@ -701,10 +714,10 @@ async function stepSlot(s) {
       if (!s.address) { s.principalSwept = true; return ok(s, s.orderId ? 'fee' : 'done', '没有资金需要收回'); }
       if (!s.cancelReason && !s.force && s.jobId && (!Number.isFinite(s.endsAt) || now < s.endsAt + SWEEP_AFTER_END_MS)) return ok(s, 'active');
       if (!/^0x[0-9a-fA-F]{40}$/.test(OWNER) || ownerConflict || !ownerKnown()) throw new Error('钱包地址尚未从币安钱包确认，暂不收回（连上钱包后自动继续）');
-      { const sf = seedSafe(true); if (!sf.ok) throw new Error('钥匙检查未通过，暂不收回：' + sf.why); }
+      { const sf = seedSafe(true); if (!sf.ok) throw new Error('密钥检查未通过，暂不收回：' + sf.why); }
       if (s.preSweepValue == null) { const v = await taskValue(s.address).catch(() => null); if (v === null) throw new Error('读不到任务钱包余额，稍后再收回'); s.preSweepValue = U(v); save(); }
       if (!s.onchainRevoked && (s.revokeFails || 0) < 3) {
-        // 先在链上撤销策略方的 session 钥匙，再搬钱（只通知后台不够：链上授权要到期才会失效）
+        // 先在链上撤销策略方的 session 密钥，再搬钱（只通知后台不够：链上授权要到期才会失效）
         const rv = await run('quant-client-local.mjs', ['revoke-onchain', '--index', String(s.index), '--address', s.address], { timeoutMs: 300_000 });
         if (rv.code !== 0 || rv.json?.sessionKeysLeft !== 0 && !/not delegated/.test(rv.all)) {
           s.revokeFails = (s.revokeFails || 0) + 1; save();
@@ -765,7 +778,7 @@ async function stepSlot(s) {
         const it = await api('POST', `/api/v1/orders/${s.orderId}/accept/prepare`, {});
         assertEscrowIntent(it, '确认放款');
         const r = await sendIntent(it, '确认放款');
-        if (r.app) { s.acceptPrompts = (s.acceptPrompts || 0) + 1; if (s.acceptPrompts >= 3) slotLog(s, '放款已请你在 App 确认 3 次，之后不再送（平台到期也会自动放款）'); s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认放款（积分要放款后才入账）'); return; }
+        if (r.app) { s.acceptPrompts = (s.acceptPrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'release'; if (s.acceptPrompts >= 3) slotLog(s, '放款已请你在 App 确认 3 次，之后不再送（平台到期也会自动放款）'); s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认放款（积分要放款后才入账）', { tag: s.id + ':release' }); return; }
         slotLog(s, '已确认放款，积分约 10 分钟入账'); return;
       }
       if (OK_DONE.has(o.status)) {
@@ -778,7 +791,7 @@ async function stepSlot(s) {
         if ((s.cancelPrompts || 0) >= 3) { s.feeFinal = 'CANCEL_UNCONFIRMED'; st.stats.refunded += 1; return ok(s, 'done', '取消订单在 App 连续 3 次没确认，手续费可能不退（金额很小）'); }
         const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {});
         assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单');
-        if (r.app) { s.cancelPrompts = (s.cancelPrompts || 0) + 1; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); s.nextFeeCheck = now + 15 * 60_000; }
+        if (r.app) { s.cancelPrompts = (s.cancelPrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'cancel'; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); s.nextFeeCheck = now + 15 * 60_000; }
         return;
       }
       if (o.status === 'IN_DISPUTE') { if (!s.disputeNotified) { s.disputeNotified = true; await notify(`订单 ${s.orderId} 进入争议，请到 agent.family 查看`); } s.nextFeeCheck = now + 3600_000; return; }
@@ -792,7 +805,7 @@ async function stepSlot(s) {
         if ((s.expirePrompts || 0) >= 3) { s.nextFeeCheck = now + 6 * 3600_000; return; }
         const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-expired/prepare`, {});
         assertEscrowIntent(it, '逾期退费'); const r = await sendIntent(it, '逾期退费');
-        if (r.app) { s.expirePrompts = (s.expirePrompts || 0) + 1; s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认「逾期退费」，手续费才会退回', { tag: s.id }); return; }
+        if (r.app) { s.expirePrompts = (s.expirePrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'refund'; s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认「逾期退费」，手续费才会退回', { tag: s.id }); return; }
         slotLog(s, '策略方逾期未交付，已申请退费'); s.nextFeeCheck = now + 10 * 60_000; return;
       }
       if (s.endsAt && now > s.endsAt + 4 * 86400_000) { s.nextFeeCheck = now + 3600_000; }
@@ -814,7 +827,7 @@ async function topUpGas(s, forRevoke = false) {
   // 任务钱包没 gas 了：从你的币安钱包补 0.001 BNB 到「这个任务钱包」（地址是工具自己产生的）；每笔最多补 3 次
   const now = Date.now();
   if (s.gasTopAt && now - s.gasTopAt < 10 * 60_000) return;
-  if ((s.gasTops || 0) + (s.revokeTops || 0) >= 3) { if (!s.gasNotified) { s.gasNotified = true; await notify(`任务钱包 ${s.address} 已补 3 次 gas，不再补；本金之后会再尝试收回，若一直失败请按「回报问题」`); } return; }
+  if ((s.gasTops || 0) + (s.revokeTops || 0) >= 3) { if (!s.gasNotified) { s.gasNotified = true; await notify(`任务钱包 ${s.address} 已补 3 次 gas，不再补；本金之后会再尝试收回，若一直失败请按「反馈问题」`); } return; }
   if (!forRevoke && (s.gasTops || 0) >= 3) { if (!s.gasNotified) { s.gasNotified = true; await notify(`任务钱包 ${s.address} 补了 3 次 gas 仍无法收回，已停止补，请联系作者`); } return; }
   if (forRevoke && (s.revokeTops || 0) >= 2) return;
   s.gasTopAt = now; if (forRevoke) s.revokeTops = (s.revokeTops || 0) + 1; else s.gasTops = (s.gasTops || 0) + 1; save();
@@ -848,10 +861,10 @@ async function tick() {
       // 收回/结算在停止时也继续（保护资金）；收回本金只要知道你的钱包地址即可，不需要登入
       if (ownerConflict) break;
       if (s.nextTryAt && Date.now() < s.nextTryAt) continue;
-      // 钱包断线／登录失效时，到期收回本金照样进行（收回用任务钱包自己的钥匙，不需要币安或 TermiX 登录）
+      // 钱包断线／登录失效时，到期收回本金照样进行（收回用任务钱包自己的密钥，不需要币安或 TermiX 登录）
       if (!canAct && s.step === 'wait_accept' && Date.now() - (s.orderedAt || Date.now()) > TD(s) * 86400_000 + 30 * 60_000) { s.cancelReason = '长时间离线，没确认到接单'; s.force = true; s.step = 'sweep'; slotLog(s, '离线太久，直接收回本金'); }
       if (!canAct && !((s.step === 'sweep' || s.step === 'active') && OWNER && ownerKnown())) continue;
-      try { await stepSlot(s); } catch (e) { if (e.auth) await refreshEnv(true); fail(s, e); }
+      try { await stepSlot(s); } catch (e) { if (e.auth || /TermiX 登录过期/.test(e?.message || '')) { await run('a2a-runtime.mjs', ['login'], { timeoutMs: 120_000 }).catch(() => {}); await refreshEnv(true); } fail(s, e); }
       save();
     }
     // 完成的移到历史
@@ -876,7 +889,7 @@ async function maybeNewSlot() {
   if (planOn()) return maybeNewPlanSlot();
   const maxR = Math.min(150, Math.floor(Number(settings.maxRounds) || 0));
   if (maxR > 0 && doneRounds() >= maxR) {
-    if (!st.slots.some((x) => !x.principalSwept && x.step !== 'paused')) { st.running = false; save(); log(`已跑完设定的 ${maxR} 轮，自动停止开新单`); await notify(`已跑完设定的 ${maxR} 轮，自动停止。要继续请在控制页面按「开始」。`); }
+    if (!st.slots.some((x) => !x.principalSwept && x.step !== 'paused')) { st.running = false; save(); log(`已跑完设置的 ${maxR} 轮，自动停止开新单`); await notify(`已跑完设置的 ${maxR} 轮，自动停止。要继续请在控制页面按「开始」。`); }
     return;
   }
   if (maxR > 0 && st.slots.some((s) => s.step !== 'paused')) return; // 设了轮数：上一轮完全结算后才开下一轮，绝不超跑
@@ -916,7 +929,7 @@ async function maybeNewPlanSlot() {
   deadPlanIds = new Set(rows.filter(dead).map((r) => r.id));
   const rowDone = (r) => dead(r) || (maxR > 0 && doneRounds(r.id) >= maxR);
   if (rows.every(rowDone)) {
-    if (!st.slots.some((x) => !x.principalSwept && x.step !== 'paused')) { st.running = false; save(); log('存款计划的每一项都已结束（跑满轮数或策略下架），自动停止开新单'); await notify('存款计划的每一项都已结束（跑满设定轮数，或策略已下架），自动停止。要继续请在控制页面按「开始」。'); }
+    if (!st.slots.some((x) => !x.principalSwept && x.step !== 'paused')) { st.running = false; save(); log('存款计划的每一项都已结束（跑满轮数或策略下架），自动停止开新单'); await notify('存款计划的每一项都已结束（跑满设置轮数，或策略已下架），自动停止。要继续请在控制页面按「开始」。'); }
     if (rows.some(dead)) lastPickNote = '存款计划里有策略已下架或不再提供你选的期限，请到设置里重新选择';
     return;
   }
@@ -960,10 +973,10 @@ let lastRescan = 0;
 async function rescanWallets() {
   if (Date.now() - lastRescan < 60 * 60_000) return;
   lastRescan = Date.now();
-  if (!seedSafe(true).ok) return; // 钥匙不属于目前的钱包时，不扫也不收
+  if (!seedSafe(true).ok) return; // 密钥不属于目前的钱包时，不扫也不收
   st.wallets ||= [];
   for (const s of st.slots) if (s.address && !st.wallets.some((w) => w.address === s.address)) st.wallets.push({ index: s.index, address: s.address });
-  // 本机纪录遗失也找得回来：向平台取回本帐号登记过的所有任务钱包，只收「本机钥匙推得出来」的
+  // 本机记录遗失也找得回来：向平台取回本账号登记过的所有任务钱包，只收「本机密钥推得出来」的
   try {
     const sf = seedSafe(true);
     if (sf.ok && env0.login) {
@@ -987,7 +1000,7 @@ async function rescanWallets() {
       const live = !['REVOKED', 'CANCELLED', 'COMPLETED', 'SETTLED', 'EXPIRED'].includes(j.status) && !(Date.parse(j.endsAt) + SWEEP_AFTER_END_MS < Date.now());
       if (live && /^0x[0-9a-fA-F]{40}$/.test(a)) busyAddr.add(getAddress(a));
     }
-  } catch { log('读不到平台委托单清单，这次只依本机纪录复查', 'warn'); }
+  } catch { log('读不到平台委托单清单，这次只依本机记录复查', 'warn'); }
   for (const w of st.wallets) {
     if (busyAddr.has(w.address)) continue;
     try {
@@ -1002,12 +1015,12 @@ async function rescanWallets() {
   save();
 }
 
-function publicNote() { return otherInstance ? `这个币安钱包已经由另一份工具在运行（${otherInstance}），这份不会开新单，只把自己进行中的单收完。请只保留一份：关闭其中一份，并删掉多余的桌面图标` : ownerConflict ? '钱包地址与纪录不符，已封锁所有动作' : (!ready() && st.slots.some((x) => !x.principalSwept && x.address)) ? `钱包连线或 TermiX 登录失效：任务钱包里的 ${st.slots.filter((x) => !x.principalSwept && x.address).reduce((a, x) => a + Number(x.alloc || 0), 0)} U 到期仍会自动收回；请到「首次设置」重新连接，才能完成积分结算` : /onedrive|google drive|dropbox|icloud/i.test(ROOT) ? '⚠️ 工具放在会自动同步到云端的资料夹，钥匙可能被上传。请把整个工具资料夹移到 C:\\TermiX 之类的位置' : lastPickNote; }
-// ── 回报问题（使用者亲自按才送；送之前先给使用者看内容）──────────────────
+function publicNote() { return otherInstance ? `这个币安钱包已经由另一份工具在运行（${otherInstance}），这份不会开新单，只把自己进行中的单收完。请只保留一份：关闭其中一份，并删掉多余的桌面图标` : ownerConflict ? '钱包地址与记录不符，已封锁所有动作' : (!ready() && st.slots.some((x) => !x.principalSwept && x.address)) ? `钱包连接或 TermiX 登录失效：任务钱包里的 ${st.slots.filter((x) => !x.principalSwept && x.address).reduce((a, x) => a + Number(x.alloc || 0), 0)} U 到期仍会自动收回；请到「首次设置」重新连接，才能完成积分结算` : /onedrive|google drive|dropbox|icloud/i.test(ROOT) ? '⚠️ 工具放在会自动同步到云盘的文件夹，密钥可能被上传。请把整个工具文件夹移到 C:\\TermiX 之类的位置' : lastPickNote; }
+// ── 反馈问题（使用者亲自按才送；送之前先给使用者看内容）──────────────────
 const reEsc = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function mask(x) {
   let t = scrub(String(x ?? ''));
-  for (const [p, r] of [[ROOT, '<工具资料夹>'], [HOME, '~']]) if (p) { t = t.replace(new RegExp(reEsc(p), 'gi'), r).replace(new RegExp(reEsc(p.replace(/\\/g, '/')), 'gi'), r); }
+  for (const [p, r] of [[ROOT, '<工具文件夹>'], [HOME, '~']]) if (p) { t = t.replace(new RegExp(reEsc(p), 'gi'), r).replace(new RegExp(reEsc(p.replace(/\\/g, '/')), 'gi'), r); }
   return t
     .replace(/\b\d{6,12}:[A-Za-z0-9_-]{30,50}\b/g, 'BOT…')
     .replace(/\b[0-9a-fA-F]{64}\b/g, '…')
@@ -1021,7 +1034,7 @@ function buildReport(note = '', lang = '') {
   return {
     app: 'TermiX-AutoDeposit', version: VERSION, os: `${process.platform} ${osRelease()} · Node ${process.versions.node}`, lang: String(lang).slice(0, 8), mode: BAW_MODE,
     note: cap(mask(String(note || '')), 500),
-    status: cap(mask(`钱包=${e.wallet} 开发者模式=${e.devMode?.enabled ? '开' : '关'} 登录=${e.login ? '是' : '否'} 条款=${e.terms?.status || '-'} 代理=${e.agentId ? '有' : '无'} 就绪=${ready() ? '是' : '否'} 运行=${st.running ? '是' : '否'} 钥匙=${seedSafe().ok ? '正常' : seedSafe().why} 另一份=${otherInstance ? '有' : '无'} BNB=${e.balances?.bnb ?? '-'} USDC=${e.balances?.usdc ?? '-'}`), 600),
+    status: cap(mask(`钱包=${e.wallet} 开发者模式=${e.devMode?.enabled ? '开' : '关'} 登录=${e.login ? '是' : '否'} 条款=${e.terms?.status || '-'} 代理=${e.agentId ? '有' : '无'} 就绪=${ready() ? '是' : '否'} 运行=${st.running ? '是' : '否'} 密钥=${seedSafe().ok ? '正常' : seedSafe().why} 另一份=${otherInstance ? '有' : '无'} BNB=${e.balances?.bnb ?? '-'} USDC=${e.balances?.usdc ?? '-'}`), 600),
     screen: cap(mask(publicNote()), 400),
     slots: st.slots.slice(0, 5).map((x) => cap(mask(`${STEP_CN[x.step] || x.step}${x.pausedFrom ? '（从' + (STEP_CN[x.pausedFrom] || x.pausedFrom) + '）' : ''} ${x.alloc}U 错误${x.errCount || 0}次 ${x.lastErr || ''}`), 280)),
     logs: logs.slice(-25).map((l) => cap(mask(`${new Date(l.t).toISOString().slice(5, 19)} ${l.msg}`), 200)),
@@ -1038,7 +1051,7 @@ async function recallAll() {
     try {
       if (['allocate', 'register'].includes(s.step) && !s.address) { s.step = 'done'; s.principalSwept = true; s.cancelReason = '使用者收回'; continue; }
       if (s.orderId && (s.orderStatus === 'PENDING_ACCEPT' || s.step === 'wait_accept') && (s.cancelPrompts || 0) < 3) {
-        try { const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {}); assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单'); if (r.app) s.cancelPrompts = (s.cancelPrompts || 0) + 1; } catch (e) { slotLog(s, '取消订单：' + e.message); }
+        try { const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {}); assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单'); if (r.app) s.cancelPrompts = (s.cancelPrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'cancel'; } catch (e) { slotLog(s, '取消订单：' + e.message); }
       }
       await revoke(s);
       s.cancelReason ||= '使用者收回'; s.force = true; if (s.step === 'paused') s.errCount = 0;
@@ -1049,19 +1062,19 @@ async function recallAll() {
 }
 
 // ── 本机控制页面 ────────────────────────────────────────────────────────────
-// 通行码重启后沿用（控制页面不用重新打开）；只存在本机 data 资料夹
+// 访问码重启后沿用（控制页面不用重新打开）；只存在本机 data 文件夹
 const TOKEN = (() => { try { const t = readFileSync(join(DATA, '.ui-token'), 'utf8').trim(); if (/^[0-9a-f]{48}$/.test(t)) return t; } catch { /* ignore */ } return randomBytes(24).toString('hex'); })();
 try { copyFileSync(join(DATA, '.ui-token'), join(DATA, '.ui-token.prev')); } catch { /* first run */ }
 const UI = readFileSync(join(HERE, 'ui.html'), 'utf8');
-const UIV = createHash('sha256').update(UI).digest('hex').slice(0, 12); // 介面版本：引擎换版后，开着的视窗会自动重新载入
+const UIV = createHash('sha256').update(UI).digest('hex').slice(0, 12); // 介面版本：引擎换版后，开着的窗口会自动重新加载
 const tokOk = (t) => { try { const a = Buffer.from(String(t || '')); const b = Buffer.from(TOKEN); return a.length === b.length && timingSafeEqual(a, b); } catch { return false; } };
 let pairing = null;
 function publicState() {
   return {
     version: VERSION, uiv: UIV, running: st.running, ready: ready(), owner: OWNER,
     env: { checked: !!env0.checked && (!st.setupDone || Date.now() - BOOT_AT > 90_000), baw: env0.baw, wallet: env0.wallet, devMode: env0.devMode, login: env0.login, terms: env0.terms ? { status: env0.terms.status, version: env0.terms.termsVersion, url: env0.terms.termsUrl, notice: (Array.isArray(env0.terms.notice) ? env0.terms.notice : [env0.terms.notice].filter(Boolean)).map((x) => typeof x === 'string' ? x : [x?.title, x?.body || x?.text].filter(Boolean).join('\n')).join('\n\n').slice(0, 8000) } : null, agent: !!env0.agentId, heldAgent: env0.heldAgent || '', balances: env0.balances },
-    pairing, runDone: planOn() ? (() => { const live = settings.plan.filter((r) => !deadPlanIds.has(r.id)); return live.length ? Math.min(...live.map((r) => doneRounds(r.id))) : 0; })() : doneRounds(), settings: { ...settings, tgToken: settings.tgToken ? '已设定' : '' },
-    slots: st.slots.map((s) => ({ id: s.id, planId: s.planId || null, termDays: TD(s), step: s.step, stepCn: STEP_CN[s.step], pausedFrom: s.pausedFrom, appWait: s.appWaitUntil && Date.now() < s.appWaitUntil && ['fund', 'pay'].includes(s.step) ? { until: s.appWaitUntil, what: s.appWhat || '' } : null, alloc: s.alloc, strategyName: s.strategyName, provider: s.provider, label: s.label, endsAt: s.endsAt, address: s.address, orderStatus: s.orderStatus, lastErr: s.lastErr, cancelReason: s.cancelReason, principalSwept: !!s.principalSwept, log: (s.log || []).slice(-6) })),
+    pairing, runDone: planOn() ? (() => { const live = settings.plan.filter((r) => !deadPlanIds.has(r.id)); return live.length ? Math.min(...live.map((r) => doneRounds(r.id))) : 0; })() : doneRounds(), settings: { ...settings, tgToken: '', tgTokenSet: !!settings.tgToken },
+    slots: st.slots.map((s) => ({ id: s.id, funded: !!(s.fundedOk || (s.address && !['allocate', 'register', 'fund'].includes(s.pausedFrom || s.step))), planId: s.planId || null, termDays: TD(s), step: s.step, stepCn: STEP_CN[s.step], pausedFrom: s.pausedFrom, appWait: s.appWaitUntil && Date.now() < s.appWaitUntil && (['fund', 'pay'].includes(s.step) || ['release', 'cancel', 'refund'].includes(s.appWhat)) && !['done', 'sweep'].includes(s.step) ? { until: s.appWaitUntil, what: s.appWhat || '' } : null, alloc: s.alloc, strategyName: s.strategyName, provider: s.provider, label: s.label, endsAt: s.endsAt, address: s.address, orderStatus: s.orderStatus, lastErr: s.lastErr, cancelReason: s.cancelReason, principalSwept: !!s.principalSwept, log: (s.log || []).slice(-6) })),
     history: st.history.slice(0, 30).map((s) => ({ id: s.id, alloc: s.alloc, strategyName: s.strategyName, feeFinal: s.feeFinal, ok: OK_DONE.has(s.feeFinal) && !s.cancelReason && !s.shortfall, cancelReason: s.shortfall ? '本金短少，未放款' : s.cancelReason, endsAt: s.endsAt, createdAt: s.createdAt })),
     update: updater.status(), stats: st.stats, rewards: rewards.v, defaultInvite: DEFAULT_INVITE, logs: logs.slice(-80), seed: seedSafe(), backupDir: BACKUP2, note: publicNote(),
   };
@@ -1075,7 +1088,7 @@ const server = http.createServer(async (rq, rs) => {
   try {
     if (rq.method === 'GET' && url.pathname === '/') return send(200, UI, 'text/html; charset=utf-8');
     if (!url.pathname.startsWith('/api/')) return send(404, { error: 'not found' });
-    if (!tokOk(rq.headers['x-anchor-token'])) return send(401, { error: '通行码错误，请从启动程式开的网址进入' });
+    if (!tokOk(rq.headers['x-anchor-token'])) return send(401, { error: '访问码错误，请从启动程序开的网址进入' });
     if (rq.method === 'GET' && url.pathname === '/api/state') return send(200, publicState());
     if (rq.method !== 'POST') return send(405, { error: '不支持的请求' });
     if ((rq.headers['content-type'] || '').split(';')[0] !== 'application/json') return send(415, { error: '不支持的请求' });
@@ -1085,7 +1098,7 @@ const server = http.createServer(async (rq, rs) => {
     if (txPath) apiBusy++;
     try {
     switch (url.pathname) {
-      case '/api/start': if (otherInstance) return send(400, { error: '这个币安钱包已经由另一份工具在运行，这份不能开始' }); if (!ready()) return send(400, { error: '还没完成设定' }); st.running = true; st.noAccept = 0; st.abortStreak = 0; st.runStartedAt = Date.now(); save(); log('▶ 开始自动存款'); tick(); return send(200, { ok: true });
+      case '/api/start': if (otherInstance) return send(400, { error: '这个币安钱包已经由另一份工具在运行，这份不能开始' }); if (!ready()) return send(400, { error: '还没完成设置' }); st.running = true; st.noAccept = 0; st.abortStreak = 0; st.runStartedAt = Date.now(); save(); log('▶ 开始自动存款'); tick(); return send(200, { ok: true });
       case '/api/stop': st.running = false; save(); log('⏸ 停止开新单（进行中的单会跑完并自动收回）'); return send(200, { ok: true });
       case '/api/logs': { // 给用户和用户自己的 AI 排查问题用（只在本机读取，不会上传）
         const n = Math.max(1, Math.min(1000, Math.floor(Number(b.n) || 200))), onlyErr = !!b.errors;
@@ -1095,8 +1108,8 @@ const server = http.createServer(async (rq, rs) => {
         return send(200, { ok: true, file: F.log, lines: lines.slice(-n) });
       }
       case '/api/update-check': return send(200, { ok: true, update: await updateCheck() });
-      case '/api/update-apply': { const u = updater.status(); if (!u.available) return send(400, { error: u.error || '目前已经是最新版本' }); updateWhenIdle(`使用者要求更新到 v${u.latest}`); return send(200, { ok: true, note: '正在下载并安装新版本，完成后工具会自动重新启动（约 30 秒），页面会自动重新整理' }); }
-      case '/api/restart': exitWhenIdle(10, '重新启动工具'); return send(200, { ok: true, note: '工具正在重新启动，约 15 秒后重新整理页面' });
+      case '/api/update-apply': { const u = updater.status(); if (!u.available) return send(400, { error: u.error || '目前已经是最新版本' }); updateWhenIdle(`使用者要求更新到 v${u.latest}`); return send(200, { ok: true, note: '正在下载并安装新版本，完成后工具会自动重新启动（约 30 秒），页面会自动刷新' }); }
+      case '/api/restart': exitWhenIdle(10, '重新启动工具'); return send(200, { ok: true, note: '工具正在重新启动，约 15 秒后刷新页面' });
       case '/api/quit': if (b.confirm !== 'QUIT') return send(400, { error: '需要确认' }); st.running = false; save(); exitWhenIdle(0, '关闭工具（已停止开新单；进行中的存款下次开启时会继续收回）'); return send(200, { ok: true, note: '工具已关闭。要再开启，点桌面上的「TermiX AutoDeposit」' });
       case '/api/recall': if (b.confirm !== 'RECALL') return send(400, { error: '需要确认' }); st.running = false; st.recallRequested = true; save(); tick(); return send(200, { ok: true, note: '已开始收回，几分钟内完成，进度看「进行中」' });
       case '/api/retry': { if (busy) return send(409, { error: '正在处理中，几秒后再按' }); const s = st.slots.find((x) => x.id === b.id && x.step === 'paused'); if (!s) return send(404, { error: '找不到这一笔' }); s.step = s.pausedFrom || 'sweep'; s.errCount = 0; save(); tick(); return send(200, { ok: true }); }
@@ -1126,7 +1139,7 @@ const server = http.createServer(async (rq, rs) => {
         if (b.autoUpdate !== undefined) n.autoUpdate = !!b.autoUpdate;
         if (b.maxPerRoundU !== undefined) n.maxPerRoundU = Math.max(10, Math.min(1000, Math.floor(Number(b.maxPerRoundU) || 20)));
         let bad = '';
-        if (b.tgToken !== undefined && b.tgToken !== '已设定') { if (b.tgToken === '') n.tgToken = ''; else if (/^\d{5,12}:[A-Za-z0-9_-]{30,50}$/.test(b.tgToken)) n.tgToken = b.tgToken; else bad = 'Bot Token 格式不对，没有保存'; }
+        if (b.tgToken !== undefined && b.tgToken !== '已设置') { if (b.tgToken === '') n.tgToken = ''; else if (/^\d{5,12}:[A-Za-z0-9_-]{30,50}$/.test(b.tgToken)) n.tgToken = b.tgToken; else bad = 'Bot Token 格式不对，没有保存'; }
         if (b.tgChatId !== undefined) { if (b.tgChatId === '') n.tgChatId = ''; else if (/^-?\d{3,20}$/.test(String(b.tgChatId))) n.tgChatId = String(b.tgChatId); else bad = bad || 'Chat ID 格式不对，没有保存'; }
         settings = { ...settings, ...n }; writeJson(F.settings, settings);
         return bad ? send(400, { error: bad }) : send(200, { ok: true });
@@ -1155,18 +1168,18 @@ const server = http.createServer(async (rq, rs) => {
       case '/api/report-preview': return send(200, { ok: true, report: buildReport(b.note, b.lang) });
       case '/api/report': {
         while (reportTimes.length && Date.now() - reportTimes[0] > 3600_000) reportTimes.shift();
-        if (reportTimes.length >= 3) return send(429, { error: '一小时内最多回报 3 次，请稍后再试' });
+        if (reportTimes.length >= 3) return send(429, { error: '一小时内最多反馈 3 次，请稍后再试' });
         try {
           const r = await fetch(REPORT_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildReport(b.note, b.lang)), signal: AbortSignal.timeout(15_000) });
           const j = await r.json().catch(() => ({}));
-          if (!r.ok || !j.ok) return send(400, { error: j.error || '回报没有送出，请稍后再试' });
-        } catch { return send(400, { error: '连不上回报服务器，请检查网络' }); }
+          if (!r.ok || !j.ok) return send(400, { error: j.error || '反馈没有发送，请稍后再试' });
+        } catch { return send(400, { error: '连不上反馈服务器，请检查网络' }); }
         reportTimes.push(Date.now());
-        log('已送出问题回报给作者');
-        return send(200, { ok: true, note: '已送出，作者会收到。谢谢回报！' });
+        log('已发送问题反馈给作者');
+        return send(200, { ok: true, note: '已发送，作者会收到。谢谢反馈！' });
       }
       case '/api/refresh': {
-        // 「刷新状态」：钱包连线、余额、积分、策略清单、更新全部重读，出错在等待中的单也立刻重试一次（等待 App 确认中的不打扰）
+        // 「刷新状态」：钱包连接、余额、积分、策略清单、更新全部重读，出错在等待中的单也立刻重试一次（等待 App 确认中的不打扰）
         await refreshEnv(true); await refreshRewards(true); await refreshBalances();
         await allStrategies(true).catch(() => {});
         updateCheck().catch(() => {});
@@ -1218,7 +1231,7 @@ const server = http.createServer(async (rq, rs) => {
     } finally { if (txPath) apiBusy--; }
   } catch (e) { return send(500, { error: scrub(e.message) }); }
 });
-// 等目前这一步做完（不在动钱的中途）才结束程式；10 = 请启动器重新启动，0 = 关闭
+// 等目前这一步做完（不在动钱的中途）才结束程序；10 = 请启动器重新启动，0 = 关闭
 const updater = makeUpdater({ root: ROOT, version: VERSION, log: (m) => log(m) });
 let updWaiting = false;
 // 等目前步骤做完、暂停开新步骤，再换文件并重启；换失败就恢复运行
@@ -1237,7 +1250,7 @@ async function updateCheck() {
   const u = await updater.check();
   const auto = u.available && (u.critical || settings.autoUpdate !== false);
   if (auto) updateWhenIdle(`发现新版本 v${u.latest}，自动安装`);
-  if (u.available && !auto && st.updNotified !== u.latest) { st.updNotified = u.latest; save(); notify(u.critical ? `AutoDeposit 有重要更新 v${u.latest}，工具会在空档自动安装。` : `AutoDeposit 有新版本 v${u.latest}。打开工具视窗，点上方「查看更新」即可一键更新（不影响钱包与进行中的单）。`).catch(() => {}); }
+  if (u.available && !auto && st.updNotified !== u.latest) { st.updNotified = u.latest; save(); notify(u.critical ? `AutoDeposit 有重要更新 v${u.latest}，工具会在空闲时自动安装。` : `AutoDeposit 有新版本 v${u.latest}。打开工具窗口，点上方「查看更新」即可一键更新（不影响钱包与进行中的单）。`).catch(() => {}); }
   return u;
 }
 setTimeout(() => updateCheck().catch(() => {}), 20_000).unref();
@@ -1261,12 +1274,12 @@ server.listen(PORT, '127.0.0.1', async () => {
 server.on('error', async (e) => {
   if (e.code === 'EACCES') process.exit(4);
   if (e.code !== 'EADDRINUSE') { console.error('无法启动：' + e.message); process.exit(1); }
-  // 是不是本工具已在跑？用上次的通行码问问看
+  // 是不是本工具已在跑？用上次的访问码问问看
   let mine = false;
   try { const old = readFileSync(join(DATA, '.ui-token.prev'), 'utf8').trim(); const r = await fetch(`http://127.0.0.1:${PORT}/api/state`, { headers: { 'x-anchor-token': old }, signal: AbortSignal.timeout(3000) }); mine = r.ok; } catch { mine = false; }
   if (mine) process.exit(3);
   try { unlinkSync(join(DATA, '.ui-url')); } catch { /* ignore */ }
-  // 被别的程式（或同一台电脑上的另一份本工具）占用 → 换下一个连接埠
+  // 被别的程序（或同一台电脑上的另一份本工具）占用 → 换下一个连接埠
   if (!process.env.ANCHOR_PORT && PORT < 17899) { PORT += 1; setTimeout(() => server.listen(PORT, '127.0.0.1'), 100); return; }
   process.exit(4);
 });

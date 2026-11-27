@@ -10,7 +10,7 @@ const PUB = createPublicKey(`-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAvYmISbn7eiXEcEhhiU8obs+bUeTQVzGLwbB7hMjikSo=
 -----END PUBLIC KEY-----`);
 const ALLOW_RE = /^(app\/[\w.-]+|skills\/termix-agent-skills\/[\w.-]+(\/[\w.-]+)*|client-deps\.tgz|Start-TermiX\.vbs|LICENSE|README\.md|SHA256SUMS\.txt|使用说明\.txt|给AI的使用说明\.md)$/;
-// 路径不准有 ..、. 或空的分段（防止跳出白名单资料夹，例如写进 data\ 钱包钥匙）
+// 路径不准有 ..、. 或空的分段（防止跳出白名单文件夹，例如写进 data\ 钱包密钥）
 const ALLOW = { test: (p) => typeof p === 'string' && ALLOW_RE.test(p) && p.split('/').every((x) => x && x !== '.' && x !== '..') };
 
 export const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; };

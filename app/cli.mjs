@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // AutoDeposit 命令列：给你自己的 AI（Claude、Grok Bot…）或你自己在终端机用。
-// 只能做控制视窗上按钮能做的事；碰不到本金去向（收回目的地固定是你的币安钱包）。
+// 只能做控制窗口上按钮能做的事；碰不到本金去向（收回目的地固定是你的币安钱包）。
 // 用法：node app/cli.mjs <status|start|stop|recall|refresh|connect|invite|report|strategies|plan|update|logs>（存款计划模式下 start --amount 不起作用，金额以计划为准） [--amount N] [--rounds N] [--code X] [--confirm]
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -11,7 +11,7 @@ const out = (o, code = 0) => { console.log(JSON.stringify(o, null, 2)); process.
 let url = '';
 try { url = readFileSync(join(DATA, '.ui-url'), 'utf8').trim(); } catch { /* 没在跑 */ }
 const m = url.match(/^(http:\/\/127\.0\.0\.1:\d+)\/#t=([0-9a-f]{48})$/);
-if (!m) out({ ok: false, error: '工具没有在运行。请先双击桌面的「TermiX AutoDeposit」（或工具资料夹里的 Start-TermiX.vbs）启动。' }, 1);
+if (!m) out({ ok: false, error: '工具没有在运行。请先双击桌面的「TermiX AutoDeposit」（或工具文件夹里的 Start-TermiX.vbs）启动。' }, 1);
 const [, BASE, TOKEN] = m;
 const args = process.argv.slice(2);
 const cmd = args[0] || 'status';
@@ -27,12 +27,12 @@ function summary(S) {
   const e = S.env || {};
   const todo = [];
   if (e.wallet !== 'CONNECTED') todo.push('连接币安 AI 钱包：执行 connect，然后请用户用币安 App 扫码、核对配对码并确认');
-  else if (!(e.devMode && e.devMode.enabled)) todo.push('请用户在币安 App → Agentic Wallet 设定里开启「开发者模式」，然后执行 refresh');
+  else if (!(e.devMode && e.devMode.enabled)) todo.push('请用户在币安 App → Agentic Wallet 设置里开启「开发者模式」，然后执行 refresh');
   else if (!e.login) todo.push('登录 TermiX 中，稍等后执行 refresh');
-  else if (!(e.terms && e.terms.status === 'accepted')) todo.push('请用户本人在控制视窗阅读并同意 TermiX 使用条款（AI 不可代为同意）');
-  else if (!e.agent) todo.push(e.heldAgent ? '正在自动启用用户的币安 Agent ID，稍等后执行 refresh' : '请用户在控制视窗按「新建代理身份」（约 0.0002 BNB 手续费）');
+  else if (!(e.terms && e.terms.status === 'accepted')) todo.push('请用户本人在控制窗口阅读并同意 TermiX 使用条款（AI 不可代为同意）');
+  else if (!e.agent) todo.push(e.heldAgent ? '正在自动启用用户的币安 Agent ID，稍等后执行 refresh' : '请用户在控制窗口按「新建代理身份」（约 0.0002 BNB 手续费）');
   const aw = (S.slots || []).map((s) => s.appWait).find(Boolean);
-  if (aw) todo.push('请用户打开币安 App → 钱包 → Agentic Wallet 管理页，在「待确认」找到这笔交易并按确认：' + (aw.what === 'fund' ? '转出 USDC 和少量 BNB 到他自己的任务钱包（地址见 active[].taskWallet；App 若跳「异常收款地址／7702 账户」是因为任务钱包用 EIP-7702 升级成智能账户，地址一致就按「继续交易」）' : aw.what === 'fee-approve' ? '授权 1 USDC 额度给 TermiX 官方托管合约 0x6A52…913C（只能用来付手续费，只要一次）' : aw.what === 'fee-pay' ? '付这一轮的小额手续费给 TermiX 官方托管合约 0x6A52…913C' : '对象是 TermiX 官方托管合约 0x6A52…913C') + '。按完工具会自动继续；最多提醒 3 次，一直没确认这一轮会取消并收回本金。');
+  if (aw) todo.push('请用户打开币安 App → 钱包 → Agentic Wallet 管理页，在「待确认」找到这笔交易并按确认：' + (aw.what === 'fund' ? '转出 USDC 和少量 BNB 到他自己的任务钱包（地址见 active[].taskWallet；App 若跳「异常收款地址／7702 账户」是因为任务钱包用 EIP-7702 升级成智能账户，地址一致就按「继续交易」）' : aw.what === 'fee-approve' ? '授权 1 USDC 额度给 TermiX 官方托管合约 0x6A52…913C（只能用来付手续费，额度用完才会再请你确认）' : aw.what === 'fee-pay' ? '付这一轮的小额手续费给 TermiX 官方托管合约 0x6A52…913C' : aw.what === 'release' ? '放款：把这一单的手续费放给策略方，积分才会入账（对象是 TermiX 官方托管合约 0x6A52…913C）' : aw.what === 'cancel' ? '取消订单：策略方没接单，确认后手续费退回钱包' : aw.what === 'refund' ? '逾期退费：确认后手续费退回钱包' : '对象是 TermiX 官方托管合约 0x6A52…913C') + '。按完工具会自动继续；最多提醒 3 次，一直没确认这一轮会取消并收回本金。');
   if (S.note) todo.push('工具提示：' + S.note);
   if (S.update && S.update.available) todo.push(`有新版本 v${S.update.latest}：先问用户要不要更新，用户同意后执行 update --apply`);
   return {
@@ -61,7 +61,7 @@ try {
       await call('recall', { confirm: 'RECALL' }); out(summary(await call('state')));
     case 'connect': { await call('connect', {}); await new Promise((r) => setTimeout(r, 8000)); const S = await call('state'); out({ ok: true, pairing: (S.pairing?.out || '').split('\n').filter((l) => /Pairing code|Link/.test(l)).join('\n'), tellUser: '请用币安 App 扫电脑上打开的 QR 码（或在手机打开上面的链接），核对配对码一致后按确认。' }); }
     case 'report': {
-      if (!has('confirm')) { const r = await call('report-preview', { note: opt('note') || '', lang: 'ai' }); out({ ok: false, preview: r.report, error: '会把上面的内容（已去掉钥匙与私人资料）送给工具作者。请先给用户看并取得同意，再加 --confirm 送出。' }, 1); }
+      if (!has('confirm')) { const r = await call('report-preview', { note: opt('note') || '', lang: 'ai' }); out({ ok: false, preview: r.report, error: '会把上面的内容（已去掉密钥与私人信息）送给工具作者。请先给用户看并取得同意，再加 --confirm 发送。' }, 1); }
       out(await call('report', { note: opt('note') || '', lang: 'ai' }));
     }
     case 'strategies': { const r = await call('strategies', { fresh: true }); out({ ok: true, note: '只列出通过安全条件、可以存的策略。terms 是可选期限（天，0.25 = 6 小时）；avail 是剩余空位（U）。期限越长积分越少：每 1U 每完成一单 = 100 TP。', items: r.items }); }
@@ -78,6 +78,6 @@ try {
     }
     case 'logs': { const r = await call('logs', { n: Number(opt('n')) || 200, errors: has('errors') }); out({ ok: true, file: r.file, count: r.lines.length, lines: r.lines, next: '依照错误内容判断原因并告诉用户怎么处理；需要作者协助时执行 report --note "简述" --confirm（先问用户）' }); }
     case 'invite': { const c = opt('code'); if (!c) out({ ok: false, error: '用法：invite --code 邀请码（一次性，绑了不能改）' }, 1); out(await call('invite-bind', { code: c })); }
-    default: out({ ok: false, error: '未知指令。可用：status | start [--amount N] [--rounds N] | stop | recall --confirm | refresh | connect | strategies | plan --set JSON | plan --auto | update [--apply] | logs [--errors] [--n 200] | invite --code X | report [--note 说明] --confirm' }, 1);
+    default: out({ ok: false, error: '未知命令。可用：status | start [--amount N] [--rounds N] | stop | recall --confirm | refresh | connect | strategies | plan --set JSON | plan --auto | update [--apply] | logs [--errors] [--n 200] | invite --code X | report [--note 说明] --confirm' }, 1);
   }
 } catch (e) { out({ ok: false, error: e.message }, 1); }
