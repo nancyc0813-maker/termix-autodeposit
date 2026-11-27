@@ -1,10 +1,10 @@
 {
- "version": "1.0.1",
- "commit": "a2d668742feceb388f3533e81d805c574c4774b5",
+ "version": "1.0.2",
+ "commit": "3f38c5a1a38ddd3ee784b63c0b11b686105eff53",
  "critical": true,
  "notes": {
-  "zh": "修复：到期收回本金时，若任务钱包留有极少量 Venus 零头，会一直收回失败。此为必要更新。",
-  "en": "Fix: principal recall failed when a tiny Venus vUSDC balance remained in the task wallet. Required update."
+  "zh": "必要更新：到期收回本金更稳（Venus 无法赎回时直接把凭证转回你的钱包）、卡住的单会自动先收回本金、刷新会一起更新积分与策略、语言修正。",
+  "en": "Required update: safer principal recall, stuck rounds now return principal automatically, refresh reloads points and strategies, language fixes."
  },
  "files": [
   {
@@ -14,12 +14,12 @@
   },
   {
    "path": "README.md",
-   "sha256": "9cd70b9d01f6ee0a1c5b462de3843d725acb7217b6ce63283d478c1794654145",
-   "size": 8900
+   "sha256": "261d2afc80c4d22969c2bfb47092471e0bc4973110fdaf63fd1551067c69bccf",
+   "size": 8963
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "fd875102b5ce26050e371b33dccd454d2e5588aec88491351984d09bfc5a4f26",
+   "sha256": "b2f11464272805d60dd3783ce2a4ccbf6b38c6ba43937cffff8310b5bae53e32",
    "size": 8663
   },
   {
@@ -54,13 +54,13 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "c050df06095f67f383b72e6a3c4ac03cc1081a4510c49055a446a40b6cef1a69",
-   "size": 101665
+   "sha256": "4ae9835e1bbd1b573b96defe0e67302b79b8101e1d4cd6a5ec99cf336b83b7fc",
+   "size": 105674
   },
   {
    "path": "app/ui.html",
-   "sha256": "a091eba741c2dce190d88ae78aca461c8f3d930ad43eaa2192a0914e3ffb0a2f",
-   "size": 227428
+   "sha256": "7f4588aae2d899c2c5e69e2ba02fce62a684270b0c5f90e14629601e455363da",
+   "size": 228704
   },
   {
    "path": "app/updater.mjs",
@@ -364,13 +364,13 @@
   },
   {
    "path": "skills/termix-agent-skills/scripts/eth-rpc.mjs",
-   "sha256": "bc5b2ddf1612476eee7cffa585733f9f2864c2a3e6c79edfc7a44572c1919994",
-   "size": 5373
+   "sha256": "cc231aaa414bbe925e2f19b57cec20133c5d63c3a46c8c1adfef049eec63f367",
+   "size": 6359
   },
   {
    "path": "skills/termix-agent-skills/scripts/quant-client-local.mjs",
-   "sha256": "50e2598f2e8cf1b6928d504b4b3d551d14d0853791332f3c0f0c4815943bc5fc",
-   "size": 52207
+   "sha256": "ca0cdc450eee7004a7d69c5ad6020b6b1303e09187826a16c2610e0ddd483b5e",
+   "size": 53298
   },
   {
    "path": "skills/termix-agent-skills/scripts/quant-provider-enc-key.mjs",
@@ -399,8 +399,8 @@
   },
   {
    "path": "使用说明.txt",
-   "sha256": "6d31ac9ce3798dc46e4d0c4fb3138f490772ef17fa1bddfd5c34b5d3c86138d3",
-   "size": 10293
+   "sha256": "2febe4fbcc2b1d0291fade0fe5b3485e864c651bedd8315d26bf472e29bd7380",
+   "size": 10359
   },
   {
    "path": "给AI的使用说明.md",
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T14:47:03.555Z",
- "sig": "5DcvjaHN5RF5+UE9KfaSoKBfmqf/M1tsh7maTz9Mi1RiPT+qnDZvrBLRD8OP+ayQA22IxdNXk4hFuy/2gNdiAA=="
+ "publishedAt": "2026-11-27T15:07:58.921Z",
+ "sig": "7X8dDRvWJxfmDdsXOgWXTnJSpUVl+dOazMNmDvwJm2gMMqO/bb3y2HIbX+jrSwFyTPiL2OZYNbes5sRTdMsoCQ=="
 }
