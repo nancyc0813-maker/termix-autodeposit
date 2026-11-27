@@ -159,7 +159,7 @@ function anchorStrictAllowlist(chain, strategy) {
   // 自家「USDC 持有」策略：钱放着不动，策略方不需要任何操作权限（只给一个无害的 enterMarkets，SDK 不接受空清单）
   const own = String(process.env.ANCHOR_OWN_PROVIDERS || "").toLowerCase().split(",").filter(Boolean);
   const holdVen = new Set([H.ROUTER, H.USDC, H.WBNB]);
-  if (strategy?.protocol !== "venus" && own.includes(String(strategy?.providerAgentId || "").toLowerCase()) && /USDC Hold/i.test(String(strategy?.name || "")) &&
+  if (strategy?.protocol !== "venus" && own.includes(String(strategy?.providerAgentId || "").toLowerCase()) &&
       tok.every((t) => t === H.WBNB || t === H.USDC) && ven.every((v) => holdVen.has(v))) {
     return { kind: "hold", venues: [], tradableTokens: [] };
   }

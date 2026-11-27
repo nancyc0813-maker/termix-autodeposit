@@ -5,6 +5,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, appendFileSync, mkdirSync, writeFileSync, unlinkSync, statSync, rmSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openApp } from './openapp.mjs';
 
@@ -57,16 +58,21 @@ const unlock = () => { if (locked) { try { unlinkSync(LOCK); } catch { /* ignore
 const fail = (m) => { unlock(); msg(m); process.exit(1); };
 
 // 1) 第一次使用（或套件更新过）：解压套件
-const depsSig = (() => { try { return String(statSync(join(ROOT, 'client-deps.tgz')).size); } catch { return ''; } })();
-const depsOld = (() => { try { return readFileSync(join(DATA, '.deps-sig'), 'utf8').trim(); } catch { return ''; } })();
-if (!existsSync(join(ROOT, 'node_modules', 'viem', 'package.json')) || (depsSig && depsSig !== depsOld)) {
-  lock();
-  log('第一次使用：解压工具套件');
+// 套件指纹用 SHA-256（在线更新换了 client-deps.tgz 也能发现，大小相同也不会漏掉）
+const depsSigNow = () => { try { return createHash('sha256').update(readFileSync(join(ROOT, 'client-deps.tgz'))).digest('hex'); } catch { return ''; } };
+const depsOldSig = () => { try { return readFileSync(join(DATA, '.deps-sig'), 'utf8').trim(); } catch { return ''; } };
+function ensureDeps(quiet) {
+  const sig = depsSigNow();
+  if (existsSync(join(ROOT, 'node_modules', 'viem', 'package.json')) && (!sig || sig === depsOldSig())) return true;
+  if (!quiet) lock();
+  log('解压工具套件');
   const tar = win ? join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
   const r = spawnSync(tar, ['-xzf', 'client-deps.tgz', '-C', '.'], hidden);
-  if (!existsSync(join(ROOT, 'node_modules', 'viem', 'package.json'))) { log('解压失败：' + (r.stderr || r.error || '')); fail('解压工具套件失败，请重新下载完整的工具包。'); }
+  if (!existsSync(join(ROOT, 'node_modules', 'viem', 'package.json'))) { log('解压失败：' + (r.stderr || r.error || '')); return false; }
+  if (sig) { try { writeFileSync(join(DATA, '.deps-sig'), sig); } catch { /* ignore */ } }
+  return true;
 }
-if (depsSig && depsSig !== depsOld) { try { writeFileSync(join(DATA, '.deps-sig'), depsSig); } catch { /* ignore */ } }
+if (!ensureDeps(false)) fail('解压工具套件失败，请重新下载完整的工具包。');
 
 // 2) 币安官方 AI 钱包工具（固定 1.12.0）
 //    「独立模式」（新安装预设）：装一份只给本工具用的钱包工具在 ROOT\baw，并拿掉系统钥匙圈模组，
@@ -161,17 +167,40 @@ unlock();
 // 4) 在背景执行引擎；意外停止就自动重启，但 5 分钟内停止 5 次就通知使用者并暂停
 let first = true;
 const crashes = [];
+let startedAt = 0;
+const PENDING = join(DATA, '.update', 'pending.json');
+const readPending = () => { try { return JSON.parse(readFileSync(PENDING, 'utf8')); } catch { return null; } };
+// 新版本连续启动失败 → 用更新前的备份退回旧版
+function rollback(p) {
+  try {
+    for (const f of p.files || []) {
+      const b = join(p.backup, f), d = join(ROOT, f);
+      if (!d.startsWith(ROOT) || d.startsWith(DATA)) continue;
+      if (existsSync(b)) copyFileSync(b, d); else rmSync(d, { force: true });
+    }
+    writeFileSync(join(DATA, '.update', 'rolledback.json'), JSON.stringify({ ...p, rolledBackAt: Date.now() }));
+    unlinkSync(PENDING);
+    log(`新版本 v${p.to} 连续启动失败，已自动退回 v${p.from}`);
+    return true;
+  } catch (e) { log('自动退回旧版失败：' + e.message); return false; }
+}
 function startEngine() {
+  startedAt = Date.now();
   const env = { ...process.env, ANCHOR_OPEN_UI: first && !boot ? '1' : '0' };
   first = false;
   const child = spawn(process.execPath, [join(ROOT, 'app', 'server.mjs')], { cwd: ROOT, env, windowsHide: true, stdio: 'ignore' });
   child.on('exit', (code) => {
+    // 新版本稳定跑超过 3 分钟 → 视为更新成功
+    if (Date.now() - startedAt > 3 * 60_000) { try { unlinkSync(PENDING); } catch { /* ignore */ } }
+    if (code === 10) ensureDeps(true); // 在线更新后：套件有换就先解压再重启
     if (code === 3) { log('工具已经在运行，打开控制页面'); if (!boot) openUi(); process.exit(0); }
     if (code === 4) { log('连接埠无法使用'); msg('找不到可用的连接埠（17890～17899 都被占用或被系统保留），请关闭占用的程式或重新开机后，再点桌面图示。'); process.exit(1); }
     if (code === 0) { log('已从控制页面关闭工具'); process.exit(0); }
     if (code !== 10) {
       crashes.push(Date.now());
       while (crashes.length && Date.now() - crashes[0] > 5 * 60_000) crashes.shift();
+      const pend = readPending();
+      if (pend && crashes.length >= 3 && rollback(pend)) { crashes.length = 0; ensureDeps(true); setTimeout(startEngine, 3000); return; }
       if (crashes.length >= 5) { log('5 分钟内停止 5 次，暂停自动重启'); msg('工具连续启动失败，已暂停。请把工具资料夹 data 里的 log.txt 传给作者，或重新开机后再试。'); process.exit(1); }
     }
     log(code === 10 ? '控制页面要求重新启动' : `引擎停止（代码 ${code}），10 秒后自动重启`);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // AutoDeposit 命令列：给你自己的 AI（Claude、Grok Bot…）或你自己在终端机用。
 // 只能做控制视窗上按钮能做的事；碰不到本金去向（收回目的地固定是你的币安钱包）。
-// 用法：node app/cli.mjs <status|start|stop|recall|refresh|connect|invite|report|strategies|plan>（存款计划模式下 start --amount 不起作用，金额以计划为准） [--amount N] [--rounds N] [--code X] [--confirm]
+// 用法：node app/cli.mjs <status|start|stop|recall|refresh|connect|invite|report|strategies|plan|update|logs>（存款计划模式下 start --amount 不起作用，金额以计划为准） [--amount N] [--rounds N] [--code X] [--confirm]
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,13 +34,14 @@ function summary(S) {
   const aw = (S.slots || []).map((s) => s.appWait).find(Boolean);
   if (aw) todo.push('请用户打开币安 App → 钱包 → Agentic Wallet 管理页，在「待确认」找到这笔交易并按确认：' + (aw.what === 'fund' ? '转出 USDC 和少量 BNB 到他自己的任务钱包（地址见 active[].taskWallet；App 若跳「异常收款地址／7702 账户」是因为任务钱包用 EIP-7702 升级成智能账户，地址一致就按「继续交易」）' : aw.what === 'fee-approve' ? '授权 1 USDC 额度给 TermiX 官方托管合约 0x6A52…913C（只能用来付手续费，只要一次）' : aw.what === 'fee-pay' ? '付这一轮的小额手续费给 TermiX 官方托管合约 0x6A52…913C' : '对象是 TermiX 官方托管合约 0x6A52…913C') + '。按完工具会自动继续；最多提醒 3 次，一直没确认这一轮会取消并收回本金。');
   if (S.note) todo.push('工具提示：' + S.note);
+  if (S.update && S.update.available) todo.push(`有新版本 v${S.update.latest}：先问用户要不要更新，用户同意后执行 update --apply`);
   return {
     ok: true, version: S.version, ready: S.ready, running: S.running, wallet: S.owner || null,
     balances: e.balances ? { usdc: e.balances.usdc, bnb: e.balances.bnb } : null,
     settings: { mode: (S.settings?.plan || []).length ? 'plan' : 'auto', plan: S.settings?.plan || [], amountPerRound: S.settings?.maxPerRoundU, stopAfterRounds: S.settings?.maxRounds || 0, roundsDoneThisRun: S.runDone || 0 },
     officialPoints: S.rewards ? S.rewards.total : null, inviter: S.rewards ? (S.rewards.inviter?.code || null) : null,
     active: (S.slots || []).map((s) => ({ amount: s.alloc, strategy: s.strategyName, termDays: s.termDays, step: s.stepCn, taskWallet: s.address || null, endsAt: s.endsAt ? new Date(s.endsAt).toISOString() : null, error: s.lastErr || null })),
-    userActionNeeded: todo, note: S.note || null,
+    update: S.update ? { current: S.update.current, latest: S.update.latest, available: S.update.available } : null, recentErrors: (S.logs || []).filter((l) => l.level !== 'info').slice(-5).map((l) => `${new Date(l.t).toISOString()} [${l.level}] ${l.msg}`), userActionNeeded: todo, note: S.note || null,
   };
 }
 try {
@@ -70,7 +71,13 @@ try {
       let arr; try { arr = JSON.parse(raw); } catch { out({ ok: false, error: '--set 要是 JSON 阵列' }, 1); }
       await call('settings', { plan: arr }); const S = await call('state'); out({ ok: true, mode: 'plan', plan: S.settings.plan, note: '已保存，下一次开新单起生效；要开始请执行 start' });
     }
+    case 'update': {
+      if (has('apply')) { const r = await call('update-apply', {}); out({ ok: true, note: r.note + '。约 30 秒后执行 status 确认 version 已经变成新版本' }); }
+      const r = await call('update-check', {}); const u = r.update || {};
+      out({ ok: !u.error, current: u.current, latest: u.latest, available: !!u.available, notes: u.notes ? (u.notes.zh || u.notes.en || null) : null, error: u.error || null, next: u.available ? '把 notes 告诉用户，用户同意后执行 update --apply（只换程序文件，不动钱包与进行中的单）' : '已经是最新版本' });
+    }
+    case 'logs': { const r = await call('logs', { n: Number(opt('n')) || 200, errors: has('errors') }); out({ ok: true, file: r.file, count: r.lines.length, lines: r.lines, next: '依照错误内容判断原因并告诉用户怎么处理；需要作者协助时执行 report --note "简述" --confirm（先问用户）' }); }
     case 'invite': { const c = opt('code'); if (!c) out({ ok: false, error: '用法：invite --code 邀请码（一次性，绑了不能改）' }, 1); out(await call('invite-bind', { code: c })); }
-    default: out({ ok: false, error: '未知指令。可用：status | start [--amount N] [--rounds N] | stop | recall --confirm | refresh | connect | strategies | plan --set JSON | plan --auto | invite --code X | report [--note 说明] --confirm' }, 1);
+    default: out({ ok: false, error: '未知指令。可用：status | start [--amount N] [--rounds N] | stop | recall --confirm | refresh | connect | strategies | plan --set JSON | plan --auto | update [--apply] | logs [--errors] [--n 200] | invite --code X | report [--note 说明] --confirm' }, 1);
   }
 } catch (e) { out({ ok: false, error: e.message }, 1); }

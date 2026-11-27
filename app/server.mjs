@@ -8,17 +8,19 @@
 //   3. 付费只送 TermiX 官方托管合约，金额上限由本机依策略费率计算；只存 Nancy 的 Venus 存款类与 USDC 持有类策略。
 //   4. 任何非预期状况 → 该笔暂停并提醒，不继续动钱。
 //   5. 控制页面只接受本机连线 + 随机通行码；不开 CORS。
+//   6. 在线更新只读官方 GitHub、只接受作者签名过的清单，且只更新程序文件（updater.mjs），不碰 data/。
 import http from 'node:http';
 import { spawn, execSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, copyFileSync, readdirSync, appendFileSync, statSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, copyFileSync, readdirSync, appendFileSync, statSync, unlinkSync, rmSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
+import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.3.0';
+const VERSION = '1.0.0';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -70,7 +72,7 @@ const PREFERRED_PROVIDERS = ['cmwxfbukv3j6ypf1kq4be8b0p'];
 const F = { state: join(DATA, 'state.json'), settings: join(DATA, 'settings.json'), log: join(DATA, 'log.txt') };
 const readJson = (f, d) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return d; } };
 const writeJson = (f, o) => { writeFileSync(f + '.tmp', JSON.stringify(o, null, 1)); renameSync(f + '.tmp', f); };
-const DEFAULT_SETTINGS = { maxPerRoundU: 20, maxRounds: 0, approveUsdc: 1, tgToken: '', tgChatId: '', plan: [] }; // plan 空 = 自动挑选；否则 [{ id, strategyId, termDays, amount }]
+const DEFAULT_SETTINGS = { maxPerRoundU: 20, maxRounds: 0, approveUsdc: 1, tgToken: '', tgChatId: '', plan: [], autoUpdate: true }; // plan 空 = 自动挑选；否则 [{ id, strategyId, termDays, amount }]
 let settings = { ...DEFAULT_SETTINGS, ...readJson(F.settings, {}) };
 delete settings.testStrategyId; delete settings.allowOthers; delete settings.maxSlots; // 旧版设定一律忽略
 // 每次循环重读设定档：改设定（金额、轮数）不用重新启动
@@ -83,19 +85,25 @@ const st = readJson(F.state, null) || readJson(F.state + '.bak', null) || ({ run
 st.slots ||= []; st.history ||= []; st.stats ||= { rounds: 0, tpEst: 0, refunded: 0 };
 const save = () => { try { if (existsSync(F.state)) copyFileSync(F.state, F.state + '.bak'); } catch { /* ignore */ } writeJson(F.state, st); };
 const logs = [];
-const ts = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Taipei', hour12: false });
+const ts = () => new Date().toLocaleString('zh-CN', { hour12: false });
+let logWrites = 199;
 function log(msg, level = 'info') {
-  const line = `[${ts()}] ${msg}`;
+  const line = `[${ts()}]${level === 'info' ? '' : ` [${level.toUpperCase()}]`} ${msg}`;
   console.log(line);
   logs.push({ t: Date.now(), level, msg });
   if (logs.length > 300) logs.shift();
+  try {
+    // 超过 20MB 换新档（旧的留一份 log.1.txt），避免日志一直变大
+    if (++logWrites % 200 === 0 && statSync(F.log).size > 20 * 1024 * 1024) { const old = F.log.replace(/\.txt$/, '') + '.1.txt'; try { rmSync(old, { force: true }); } catch { /* ignore */ } renameSync(F.log, old); }
+  } catch { /* ignore */ }
   try { appendFileSync(F.log, line + '\n'); } catch { /* ignore */ }
 }
 const scrub = (s) => String(s).replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'JWT…').replace(/0x[0-9a-fA-F]{64}\b/g, '0x…').replace(/(token|seed|key)["']?\s*[:=]\s*["']?[A-Za-z0-9:_\-]{20,}/gi, '$1=…');
 
 // 同一种提醒最多通知 3 次（24 小时内）；之后只写进运行记录，不再打扰用户
-async function notify(text, { always = false } = {}) {
-  const key = String(text).replace(/[0-9.]+/g, '#').slice(0, 80);
+// tag：同一种提醒但属于不同的单（例如每一轮都要在 App 确认），各自算 3 次
+async function notify(text, { always = false, tag = '' } = {}) {
+  const key = String(text).replace(/[0-9.]+/g, '#').slice(0, 80) + (tag ? '|' + tag : '');
   st.notifyCounts ||= {};
   for (const [k, v] of Object.entries(st.notifyCounts)) if (Date.now() - v.first > 48 * 3600_000) delete st.notifyCounts[k];
   const n = st.notifyCounts[key];
@@ -343,7 +351,7 @@ async function refreshEnv(force = false) {
       if (held?.name && !agentAutoTried) {
         agentAutoTried = true;
         try {
-          await api('POST', '/api/v1/agents/activate', { provider: held.provider || 'binance_agent_id', name: held.name.replace(/\.ai$/, ''), category: 'Finance & Audit', description: 'Personal quant client agent.', tags: ['quant'] });
+          await api('POST', '/api/v1/agents/activate', { provider: held.provider || 'binance_agent_id', name: held.name.replace(/\.ai$/, ''), category: 'Finance & Audit', description: 'Personal auto-deposit agent.', tags: ['auto-deposit'] });
           log(`已自动启用你的币安 Agent ID：${held.name}`);
           const ag3 = await api('GET', '/api/v1/agents');
           const l3 = Array.isArray(ag3) ? ag3 : ag3?.items ?? [];
@@ -387,7 +395,7 @@ function classify(s) {
   const venusUsdc = s.protocol === 'venus' && subset(tok, new Set([A.USDC])) && subset(ven, new Set([A.COMPTROLLER, A.VUSDC]));
   const preferred = PREFERRED_PROVIDERS.includes(s.providerAgentId);
   // 自家 USDC 持有策略：授权时策略方没有任何操作权限
-  const hold = preferred && s.protocol !== 'venus' && /USDC Hold/i.test(String(s.name || '')) && subset(tok, new Set([A.WBNB, A.USDC])) && subset(ven, new Set([A.ROUTER, A.USDC, A.WBNB]));
+  const hold = preferred && s.protocol !== 'venus' && subset(tok, new Set([A.WBNB, A.USDC])) && subset(ven, new Set([A.ROUTER, A.USDC, A.WBNB]));
   const test = !!TEST_STRATEGY && s.id === TEST_STRATEGY && s.protocol === 'venus';
   // 只存自家策略（风险第一：策略方是自己人）；Venus 存款类与 USDC 持有类各有固定的授权范围
   return { venusUsdc, preferred: preferred || test, ok: (preferred && (venusUsdc || hold)) || test, label: test ? '测试（只授权 Venus USDC）' : hold ? 'USDC 持有（策略方无操作权限）' : venusUsdc ? 'Venus USDC 存款（只能存取 Venus）' : '' };
@@ -522,7 +530,7 @@ async function stepSlot(s) {
       if (needsApp(r.all) || appRejected(r.all)) s.fundPrompts = (s.fundPrompts || 0) + 1; // 只算「请你在 App 确认／你按了拒绝」，网路或节点错误不算
       if (needsApp(r.all)) {
         s.fundSentAt = 0;
-        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fund'; await notify('请打开币安 App 确认转入本金的交易'); return; }
+        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fund'; await notify('请打开币安 App 确认转入本金的交易', { tag: s.id }); return; }
       if (r.code !== 0) throw new Error(lastLine(r.all));
       for (let i = 0; i < 12; i++) { // 等上链
         const [u2, b2] = await Promise.all([bal(A.USDC, s.address), bnb(s.address)]);
@@ -623,9 +631,9 @@ async function stepSlot(s) {
       if (/sent createOrder|createOrderTx/.test(r.all)) { s.orderSentAt = now; save(); }
       if (!s.orderSentAt && (needsApp(r.all) || appRejected(r.all))) { s.appPrompts = (s.appPrompts || 0) + 1; save(); } // 只算「App 确认／拒绝」，网路或节点错误不算（另有 2 小时上限）
       if (!s.orderSentAt && /refusing/i.test(r.all)) { await abortSlot(s, '手续费交易内容不符安全规则，已拒绝付款'); await notify(`一笔 ${s.alloc}U：后台送来的付费交易不符安全规则，已拒绝并收回本金。原因：${lastLine(r.all)}`); return ok(s, 'sweep'); }
-      if (needsApp(r.all) && /createOrder/.test(r.all)) { s.orderSentAt = now; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-pay'; save(); await notify('请在币安 App 确认「付手续费」交易'); return; }
+      if (needsApp(r.all) && /createOrder/.test(r.all)) { s.orderSentAt = now; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-pay'; save(); await notify('请在币安 App 确认「付手续费」交易', { tag: s.id }); return; }
       if (needsApp(r.all) && !s.orderSentAt) {
-        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-approve'; await notify('第一次需要在币安 App 按「确认」授权手续费额度（只要一次），按完会自动继续'); return; }
+        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-approve'; await notify('第一次需要在币安 App 按「确认」授权手续费额度（只要一次），按完会自动继续', { tag: s.id }); return; }
       const j = await getJob(s.jobId);
       if (j.orderId) { s.orderId = j.orderId; s.orderedAt = now; return ok(s, 'wait_accept', '手续费已付，等策略方接单'); }
       if (s.orderSentAt) return; // 下一轮补登记
@@ -633,7 +641,7 @@ async function stepSlot(s) {
     }
     case 'wait_accept': {
       const o = await getOrder(s.orderId);
-      s.orderStatus = o.status;
+      s.orderStatus = o.status; s.lastErr = ''; s.errCount = 0; // 查到订单就清掉之前的连线错误，避免画面一直显示旧错误
       if (o.status === 'PENDING_ACCEPT') {
         if (now - s.orderedAt < ACCEPT_TIMEOUT_MS) return;
         if ((s.cancelPrompts || 0) >= 3) { await abortSlot(s, '策略方没接单（取消订单未确认，手续费可能不退）'); return ok(s, 'sweep'); } // 不为了一点手续费一直押着本金；计入连续中止，会冷却并停止开新单
@@ -643,7 +651,7 @@ async function stepSlot(s) {
         const r = await sendIntent(it, '取消订单');
         if (r.app) {
           s.cancelPrompts = (s.cancelPrompts || 0) + 1;
-          s.nextTryAt = now + 15 * 60_000; await notify('请在币安 App 确认「取消订单」，手续费才会退回'); return;
+          s.nextTryAt = now + 15 * 60_000; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); return;
         }
         st.noAccept = (st.noAccept || 0) + 1;
         cooldown[s.strategyId] = now + 2 * 3600_000 * 2 ** Math.min(st.noAccept - 1, 4);
@@ -653,7 +661,7 @@ async function stepSlot(s) {
       }
       if (ACCEPTED_LIVE.has(o.status) || OK_DONE.has(o.status)) { st.noAccept = 0; st.abortStreak = 0; return ok(s, 'active', '策略方已接单，开始计时'); }
       if (REFUND_DONE.has(o.status)) { await abortSlot(s, '订单已取消'); return ok(s, 'sweep'); }
-      if (now - (s.orderedAt || now) > ACCEPT_TIMEOUT_MS + 15 * 60_000) { await abortSlot(s, `订单状态 ${o.status} 一直没变成已接单`); return ok(s, 'sweep', '订单一直没被接单，取消并收回本金'); }
+      if (now - (s.orderedAt || now) > ACCEPT_TIMEOUT_MS + 15 * 60_000) { await abortSlot(s, `策略方一直没有接单（${o.status}），已自动取消并收回本金`); return ok(s, 'sweep', '订单一直没被接单，取消并收回本金'); }
       return;
     }
     case 'active': {
@@ -737,16 +745,21 @@ async function stepSlot(s) {
         if ((s.cancelPrompts || 0) >= 3) { s.feeFinal = 'CANCEL_UNCONFIRMED'; st.stats.refunded += 1; return ok(s, 'done', '取消订单在 App 连续 3 次没确认，手续费可能不退（金额很小）'); }
         const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {});
         assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单');
-        if (r.app) { s.cancelPrompts = (s.cancelPrompts || 0) + 1; await notify('请在币安 App 确认「取消订单」，手续费才会退回'); s.nextFeeCheck = now + 15 * 60_000; }
+        if (r.app) { s.cancelPrompts = (s.cancelPrompts || 0) + 1; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); s.nextFeeCheck = now + 15 * 60_000; }
         return;
       }
       if (o.status === 'IN_DISPUTE') { if (!s.disputeNotified) { s.disputeNotified = true; await notify(`订单 ${s.orderId} 进入争议，请到 agent.family 查看`); } s.nextFeeCheck = now + 3600_000; return; }
+      // 本金早已收回、只剩平台订单没结案：超过期限太久就结案进历史（不再占着「进行中」）
+      if (s.principalSwept && s.endsAt && ((s.shortfall || s.cancelReason) ? now > s.endsAt + 86400_000 : now > s.endsAt + 7 * 86400_000) && !['DELIVERED', 'IN_DISPUTE'].includes(o.status)) {
+        s.feeFinal = 'UNSETTLED_' + o.status; if (!s.cancelReason) st.stats.refunded += 1;
+        return ok(s, 'done', `平台订单一直停在 ${o.status}，本金早已收回，已结案（手续费金额很小，可到 agent.family 查看）`);
+      }
       const due = Date.parse(o.deadlines?.deliveryDueAt || o.deliveryDueAt || 0);
       if (['FUNDED', 'IN_PROGRESS'].includes(o.status) && due && now > due + 60_000) {
         if ((s.expirePrompts || 0) >= 3) { s.nextFeeCheck = now + 6 * 3600_000; return; }
         const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-expired/prepare`, {});
         assertEscrowIntent(it, '逾期退费'); const r = await sendIntent(it, '逾期退费');
-        if (r.app) { s.expirePrompts = (s.expirePrompts || 0) + 1; s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认「逾期退费」，手续费才会退回'); return; }
+        if (r.app) { s.expirePrompts = (s.expirePrompts || 0) + 1; s.nextFeeCheck = now + 15 * 60_000; await notify('请在币安 App 确认「逾期退费」，手续费才会退回', { tag: s.id }); return; }
         slotLog(s, '策略方逾期未交付，已申请退费'); s.nextFeeCheck = now + 10 * 60_000; return;
       }
       if (s.endsAt && now > s.endsAt + 4 * 86400_000) { s.nextFeeCheck = now + 3600_000; }
@@ -1007,16 +1020,17 @@ async function recallAll() {
 const TOKEN = (() => { try { const t = readFileSync(join(DATA, '.ui-token'), 'utf8').trim(); if (/^[0-9a-f]{48}$/.test(t)) return t; } catch { /* ignore */ } return randomBytes(24).toString('hex'); })();
 try { copyFileSync(join(DATA, '.ui-token'), join(DATA, '.ui-token.prev')); } catch { /* first run */ }
 const UI = readFileSync(join(HERE, 'ui.html'), 'utf8');
+const UIV = createHash('sha256').update(UI).digest('hex').slice(0, 12); // 介面版本：引擎换版后，开着的视窗会自动重新载入
 const tokOk = (t) => { try { const a = Buffer.from(String(t || '')); const b = Buffer.from(TOKEN); return a.length === b.length && timingSafeEqual(a, b); } catch { return false; } };
 let pairing = null;
 function publicState() {
   return {
-    version: VERSION, running: st.running, ready: ready(), owner: OWNER,
+    version: VERSION, uiv: UIV, running: st.running, ready: ready(), owner: OWNER,
     env: { baw: env0.baw, wallet: env0.wallet, devMode: env0.devMode, login: env0.login, terms: env0.terms ? { status: env0.terms.status, version: env0.terms.termsVersion, url: env0.terms.termsUrl, notice: (Array.isArray(env0.terms.notice) ? env0.terms.notice : [env0.terms.notice].filter(Boolean)).map((x) => typeof x === 'string' ? x : [x?.title, x?.body || x?.text].filter(Boolean).join('\n')).join('\n\n').slice(0, 8000) } : null, agent: !!env0.agentId, heldAgent: env0.heldAgent || '', balances: env0.balances },
     pairing, runDone: planOn() ? (() => { const live = settings.plan.filter((r) => !deadPlanIds.has(r.id)); return live.length ? Math.min(...live.map((r) => doneRounds(r.id))) : 0; })() : doneRounds(), settings: { ...settings, tgToken: settings.tgToken ? '已设定' : '' },
     slots: st.slots.map((s) => ({ id: s.id, planId: s.planId || null, termDays: TD(s), step: s.step, stepCn: STEP_CN[s.step], pausedFrom: s.pausedFrom, appWait: s.appWaitUntil && Date.now() < s.appWaitUntil && ['fund', 'pay'].includes(s.step) ? { until: s.appWaitUntil, what: s.appWhat || '' } : null, alloc: s.alloc, strategyName: s.strategyName, provider: s.provider, label: s.label, endsAt: s.endsAt, address: s.address, orderStatus: s.orderStatus, lastErr: s.lastErr, cancelReason: s.cancelReason, principalSwept: !!s.principalSwept, log: (s.log || []).slice(-6) })),
     history: st.history.slice(0, 30).map((s) => ({ id: s.id, alloc: s.alloc, strategyName: s.strategyName, feeFinal: s.feeFinal, ok: OK_DONE.has(s.feeFinal) && !s.cancelReason && !s.shortfall, cancelReason: s.shortfall ? '本金短少，未放款' : s.cancelReason, endsAt: s.endsAt, createdAt: s.createdAt })),
-    stats: st.stats, rewards: rewards.v, defaultInvite: DEFAULT_INVITE, logs: logs.slice(-80), seed: seedSafe(), backupDir: BACKUP2, note: publicNote(),
+    update: updater.status(), stats: st.stats, rewards: rewards.v, defaultInvite: DEFAULT_INVITE, logs: logs.slice(-80), seed: seedSafe(), backupDir: BACKUP2, note: publicNote(),
   };
 }
 async function body(rq) { let d = ''; for await (const c of rq) { d += c; if (d.length > 1e5) throw new Error('too big'); } return d ? JSON.parse(d) : {}; }
@@ -1040,6 +1054,15 @@ const server = http.createServer(async (rq, rs) => {
     switch (url.pathname) {
       case '/api/start': if (otherInstance) return send(400, { error: '这个币安钱包已经由另一份工具在运行，这份不能开始' }); if (!ready()) return send(400, { error: '还没完成设定' }); st.running = true; st.noAccept = 0; st.abortStreak = 0; st.runStartedAt = Date.now(); save(); log('▶ 开始自动存款'); tick(); return send(200, { ok: true });
       case '/api/stop': st.running = false; save(); log('⏸ 停止开新单（进行中的单会跑完并自动收回）'); return send(200, { ok: true });
+      case '/api/logs': { // 给用户和用户自己的 AI 排查问题用（只在本机读取，不会上传）
+        const n = Math.max(1, Math.min(1000, Math.floor(Number(b.n) || 200))), onlyErr = !!b.errors;
+        let lines = [];
+        try { const buf = readFileSync(F.log); lines = buf.subarray(Math.max(0, buf.length - 2_000_000)).toString('utf8').split(/\r?\n/).filter(Boolean); } catch { /* 还没有记录 */ }
+        if (onlyErr) lines = lines.filter((l) => /\[(WARN|ERROR)\]|失败|错误|暂停|异常|error|failed/i.test(l));
+        return send(200, { ok: true, file: F.log, lines: lines.slice(-n) });
+      }
+      case '/api/update-check': return send(200, { ok: true, update: await updateCheck() });
+      case '/api/update-apply': { const u = updater.status(); if (!u.available) return send(400, { error: u.error || '目前已经是最新版本' }); updateWhenIdle(`使用者要求更新到 v${u.latest}`); return send(200, { ok: true, note: '正在下载并安装新版本，完成后工具会自动重新启动（约 30 秒），页面会自动重新整理' }); }
       case '/api/restart': exitWhenIdle(10, '重新启动工具'); return send(200, { ok: true, note: '工具正在重新启动，约 15 秒后重新整理页面' });
       case '/api/quit': if (b.confirm !== 'QUIT') return send(400, { error: '需要确认' }); st.running = false; save(); exitWhenIdle(0, '关闭工具（已停止开新单；进行中的存款下次开启时会继续收回）'); return send(200, { ok: true, note: '工具已关闭。要再开启，点桌面上的「TermiX AutoDeposit」' });
       case '/api/recall': if (b.confirm !== 'RECALL') return send(400, { error: '需要确认' }); st.running = false; st.recallRequested = true; save(); tick(); return send(200, { ok: true, note: '已开始收回，几分钟内完成，进度看「进行中」' });
@@ -1067,6 +1090,7 @@ const server = http.createServer(async (rq, rs) => {
           n.plan = out;
         }
         if (b.maxRounds !== undefined) n.maxRounds = Math.max(0, Math.min(150, Math.floor(Number(b.maxRounds) || 0)));
+        if (b.autoUpdate !== undefined) n.autoUpdate = !!b.autoUpdate;
         if (b.maxPerRoundU !== undefined) n.maxPerRoundU = Math.max(10, Math.min(1000, Math.floor(Number(b.maxPerRoundU) || 20)));
         let bad = '';
         if (b.tgToken !== undefined && b.tgToken !== '已设定') { if (b.tgToken === '') n.tgToken = ''; else if (/^\d{5,12}:[A-Za-z0-9_-]{30,50}$/.test(b.tgToken)) n.tgToken = b.tgToken; else bad = 'Bot Token 格式不对，没有保存'; }
@@ -1094,7 +1118,7 @@ const server = http.createServer(async (rq, rs) => {
         } catch { return send(400, { error: '连不上 Telegram，请检查网络' }); }
         return send(200, { ok: true, note: '已发出测试消息，请到 Telegram 查看' });
       }
-      case '/api/strategies': { try { return send(200, { ok: true, items: await eligibleStrategies(!!b.fresh) }); } catch (e) { return send(400, { error: '暂时读不到策略清单，请稍后再试' }); } }
+      case '/api/strategies': { try { const items = await eligibleStrategies(!!b.fresh); const mine = new Set(env0.myAgents || []); const own = mine.size ? ((await allStrategies()).items || []).filter((s) => mine.has(s.providerAgentId)).length : 0; return send(200, { ok: true, items, ownExcluded: own }); } catch (e) { return send(400, { error: '暂时读不到策略清单，请稍后再试' }); } }
       case '/api/report-preview': return send(200, { ok: true, report: buildReport(b.note, b.lang) });
       case '/api/report': {
         while (reportTimes.length && Date.now() - reportTimes[0] > 3600_000) reportTimes.shift();
@@ -1130,10 +1154,10 @@ const server = http.createServer(async (rq, rs) => {
         const ag = (await run('a2a-runtime.mjs', ['agents'])).json;
         const held = (ag?.unactivated || [])[0];
         if (held?.name) {
-          await api('POST', '/api/v1/agents/activate', { provider: held.provider || 'binance_agent_id', name: held.name.replace(/\.ai$/, ''), category: 'Finance & Audit', description: 'Personal quant client agent.', tags: ['quant'] });
+          await api('POST', '/api/v1/agents/activate', { provider: held.provider || 'binance_agent_id', name: held.name.replace(/\.ai$/, ''), category: 'Finance & Audit', description: 'Personal auto-deposit agent.', tags: ['auto-deposit'] });
         } else {
           const name = 'client-' + randomBytes(3).toString('hex');
-          const prep = await api('POST', '/api/v1/agents/prepare', { name, displayName: 'Quant Client', category: 'Finance & Audit', description: 'Personal quant client agent.', tags: ['quant'] });
+          const prep = await api('POST', '/api/v1/agents/prepare', { name, displayName: 'Auto Deposit', category: 'Finance & Audit', description: 'Personal auto-deposit agent.', tags: ['auto-deposit'] });
           const reg = String(prep.contract || '').toLowerCase();
           if (reg !== '0x8004a169fb4a3325136eb29fa0ceb6d2e539a432' && reg !== '0x50ccc2207bf4a148082073af1b64ab40ad38a210') return send(400, { error: '代理登记合约不是官方地址，已拒绝' });
           if (!/^0x[0-9a-f]{8}/i.test(String(prep.callData || '')) || /^0x(095ea7b3|a9059cbb|23b872dd|42842e0e|b88d4fde|a22cb465)/i.test(String(prep.callData))) return send(400, { error: '代理登记交易内容异常，已拒绝' });
@@ -1150,6 +1174,29 @@ const server = http.createServer(async (rq, rs) => {
   } catch (e) { return send(500, { error: scrub(e.message) }); }
 });
 // 等目前这一步做完（不在动钱的中途）才结束程式；10 = 请启动器重新启动，0 = 关闭
+const updater = makeUpdater({ root: ROOT, version: VERSION, log: (m) => log(m) });
+let updWaiting = false;
+// 等目前步骤做完、暂停开新步骤，再换文件并重启；换失败就恢复运行
+function updateWhenIdle(why) {
+  if (updWaiting || exiting) return false;
+  updWaiting = true; log(`${why}（等目前步骤完成再更新）`);
+  const t = setInterval(async () => {
+    if (busy || apiBusy > 0 || st.recallRequested) return;
+    clearInterval(t); exiting = true;
+    try { await updater.apply(); save(); process.exit(10); }
+    catch (e) { exiting = false; updWaiting = false; log(`更新没有完成：${e.message}（工具照常运行，稍后可再试）`, 'warn'); }
+  }, 500);
+  return true;
+}
+async function updateCheck() {
+  const u = await updater.check();
+  const auto = u.available && (u.critical || settings.autoUpdate !== false);
+  if (auto) updateWhenIdle(`发现新版本 v${u.latest}，自动安装`);
+  if (u.available && !auto && st.updNotified !== u.latest) { st.updNotified = u.latest; save(); notify(u.critical ? `AutoDeposit 有重要更新 v${u.latest}，工具会在空档自动安装。` : `AutoDeposit 有新版本 v${u.latest}。打开工具视窗，点上方「查看更新」即可一键更新（不影响钱包与进行中的单）。`).catch(() => {}); }
+  return u;
+}
+setTimeout(() => updateCheck().catch(() => {}), 60_000).unref();
+setInterval(() => updateCheck().catch(() => {}), 3600_000).unref(); // 每小时看一次官方 GitHub（只读一个小档案）
 function exitWhenIdle(code, why) {
   log(`${why}（等目前步骤完成）`);
   const t = setInterval(() => {
