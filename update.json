@@ -1,10 +1,10 @@
 {
- "version": "1.0.2",
- "commit": "3f38c5a1a38ddd3ee784b63c0b11b686105eff53",
+ "version": "1.0.3",
+ "commit": "456d5a4ef38196aea20500fc825390e1f58dbc91",
  "critical": true,
  "notes": {
-  "zh": "必要更新：到期收回本金更稳（Venus 无法赎回时直接把凭证转回你的钱包）、卡住的单会自动先收回本金、刷新会一起更新积分与策略、语言修正。",
-  "en": "Required update: safer principal recall, stuck rounds now return principal automatically, refresh reloads points and strategies, language fixes."
+  "zh": "必要更新：没解压就打开会提示先解压；每 5 分钟检查更新；重启时不再闪出首次设置；说明新增英文版。",
+  "en": "Required update: warns to extract the zip first, checks for updates every 5 minutes, no setup flash on restart, English guide."
  },
  "files": [
   {
@@ -14,18 +14,18 @@
   },
   {
    "path": "README.md",
-   "sha256": "261d2afc80c4d22969c2bfb47092471e0bc4973110fdaf63fd1551067c69bccf",
-   "size": 8963
+   "sha256": "973acc58157e26f69dc181722adfaf9434c2600c0fc003dc2fde74b58d53c377",
+   "size": 14623
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "b2f11464272805d60dd3783ce2a4ccbf6b38c6ba43937cffff8310b5bae53e32",
+   "sha256": "fb33eef35de69fef8cb61193275619877f13e89bdbc9fdeb15318d863f39391b",
    "size": 8663
   },
   {
    "path": "Start-TermiX.vbs",
-   "sha256": "82a16bbafaaad52cda5c80f2ee0f37b74da2e56215555552d1847cb8e8816760",
-   "size": 1006
+   "sha256": "104a2407f9bc45bf01e569e41f26a36fd5bcde2caf81a36e16bd48775a545f33",
+   "size": 2994
   },
   {
    "path": "app/app-icon.svg",
@@ -54,13 +54,13 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "4ae9835e1bbd1b573b96defe0e67302b79b8101e1d4cd6a5ec99cf336b83b7fc",
-   "size": 105674
+   "sha256": "0808d94a11b79ba1ec421bdacf37e28aba355778cb86e48bdc2dac54af6fe391",
+   "size": 106188
   },
   {
    "path": "app/ui.html",
-   "sha256": "7f4588aae2d899c2c5e69e2ba02fce62a684270b0c5f90e14629601e455363da",
-   "size": 228704
+   "sha256": "8d634a690f42374f57fd6c2745ef095ed7d62b9ea88404d0b6d305597b37c9be",
+   "size": 228718
   },
   {
    "path": "app/updater.mjs",
@@ -399,8 +399,8 @@
   },
   {
    "path": "使用说明.txt",
-   "sha256": "2febe4fbcc2b1d0291fade0fe5b3485e864c651bedd8315d26bf472e29bd7380",
-   "size": 10359
+   "sha256": "88d739df787a1f35cce00e6fd03c0eab288a9b7286718ad44107eb2c0afb2bf2",
+   "size": 10666
   },
   {
    "path": "给AI的使用说明.md",
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T15:07:58.921Z",
- "sig": "7X8dDRvWJxfmDdsXOgWXTnJSpUVl+dOazMNmDvwJm2gMMqO/bb3y2HIbX+jrSwFyTPiL2OZYNbes5sRTdMsoCQ=="
+ "publishedAt": "2026-11-27T16:18:18.504Z",
+ "sig": "R9G8qvdaStsQNqW1Jfvxaco1IQyW+mfExnE6AGj7Oy8K/makqY4tpwbinmxblkV2OeHGgNOpwDGPaTpIAJdRAQ=="
 }
