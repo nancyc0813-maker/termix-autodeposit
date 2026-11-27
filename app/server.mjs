@@ -20,7 +20,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -224,7 +224,15 @@ async function taskValue(addr) { // 任务钱包的 USDC 价值（含 Venus 存�
 
 // ── 种子备份（任务钱包唯一的钥匙）───────────────────────────────────────────
 const HOME = process.env.USERPROFILE || process.env.HOME || ROOT;
-const BACKUP2 = join(HOME, 'TermiX-自动存款-备份（不要删除）');
+// 钥匙备份资料夹：新安装用英文名（各语言用户都看得懂）；旧版已建立的中文资料夹继续沿用，绝不搬动钥匙
+const BACKUP2 = (() => {
+  const f = join(DATA, '.backup-dir'); // 第一次决定后就记住，之后永远用同一个资料夹（避免和旧版的资料夹混用）
+  try { const p = readFileSync(f, 'utf8').trim(); if (p) return p; } catch { /* 第一次 */ }
+  const old = join(HOME, 'TermiX-自动存款-备份（不要删除）');
+  const p = existsSync(old) ? old : join(HOME, 'TermiX-AutoDeposit-Backup (DO NOT DELETE)');
+  try { writeFileSync(f, p); } catch { /* ignore */ }
+  return p;
+})();
 let seedCache = { at: 0, v: null };
 function seedSafe(fresh = false) {
   if (!fresh && seedCache.v && Date.now() - seedCache.at < 60_000) return seedCache.v;
@@ -253,7 +261,7 @@ function seedSafeRaw() {
       if (createHash('sha256').update(v).digest('hex') !== h) return { ok: false, why: `备份 ${c} 与主种子不一致，已停止（请勿删除任何种子档，联系作者）` };
     } catch (e) { return { ok: false, why: '无法写入备份：' + e.message }; }
   }
-  try { if (!existsSync(join(BACKUP2, '说明.txt'))) writeFileSync(join(BACKUP2, '说明.txt'), '这个资料夹是 TermiX 自动存款「任务钱包」的钥匙备份。\r\n只要任务钱包里还有钱，就绝对不要删除，也不要给任何人看。\r\n每个子资料夹以币安钱包地址命名。工具资料夹不见时，把对应地址资料夹里的 task-wallet-seed.hex 放回 工具\\data\\seed\\ 即可找回。\r\n'); } catch { /* ignore */ }
+  try { if (!existsSync(join(BACKUP2, '说明.txt'))) writeFileSync(join(BACKUP2, '说明.txt'), 'This folder backs up the TermiX AutoDeposit task-wallet keys. Never delete it while a task wallet holds funds, and never share it.\r\n\r\n这个资料夹是 TermiX 自动存款「任务钱包」的钥匙备份。\r\n只要任务钱包里还有钱，就绝对不要删除，也不要给任何人看。\r\n每个子资料夹以币安钱包地址命名。工具资料夹不见时，把对应地址资料夹里的 task-wallet-seed.hex 放回 工具\\data\\seed\\ 即可找回。\r\n'); } catch { /* ignore */ }
   return { ok: true, hash: h.slice(0, 8) };
 }
 // v1.0 单一钱包时代的旧备份位置，只属于当初那台电脑的旧安装（共用模式且已有纪录）；新安装绝不能还原它，否则会拿到别人的任务钱包钥匙
@@ -617,7 +625,11 @@ async function stepSlot(s) {
       if (s.payBlock) {
         // 上次付款尝试中断过：先查链上有没有「你的钱包 → 托管合约」的 USDC 转账，有就只补登记，绝不重付
         const logs = await escrowPayLogs(BigInt(s.payBlock)).catch(() => null);
-        if (logs === null) throw new Error('无法查询链上付款纪录，稍后再试');
+        if (logs === null) {
+          // 查不到链上纪录也不能无限等：超过 2 小时先收回本金，手续费交给「找回手续费」步骤继续追
+          if (now - s.checkoutAt > 2 * 3600_000) { s.orderSentAt ||= now; s.payUnknown = true; save(); await abortSlot(s, '无法确认手续费是否已付'); return ok(s, 'sweep'); }
+          throw new Error('无法查询链上付款纪录，稍后再试');
+        }
         if (logs.length) { s.orderSentAt ||= now; save(); return; }
         if (now - (s.payAttemptAt || 0) < 5 * 60_000) return;
       }
@@ -644,11 +656,12 @@ async function stepSlot(s) {
       s.orderStatus = o.status; s.lastErr = ''; s.errCount = 0; // 查到订单就清掉之前的连线错误，避免画面一直显示旧错误
       if (o.status === 'PENDING_ACCEPT') {
         if (now - s.orderedAt < ACCEPT_TIMEOUT_MS) return;
-        if ((s.cancelPrompts || 0) >= 3) { await abortSlot(s, '策略方没接单（取消订单未确认，手续费可能不退）'); return ok(s, 'sweep'); } // 不为了一点手续费一直押着本金；计入连续中止，会冷却并停止开新单
+        const hard = now - s.orderedAt > ACCEPT_TIMEOUT_MS + 60 * 60_000;
+        if ((s.cancelPrompts || 0) >= 3 || (s.cancelErrs || 0) >= 5 || hard) { await abortSlot(s, '策略方没接单（取消订单未完成，手续费可能不退）'); return ok(s, 'sweep'); } // 不为了一点手续费一直押着本金；计入连续中止，会冷却并停止开新单
         slotLog(s, '策略方 45 分钟没接单，取回手续费、换策略');
         const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {});
         assertEscrowIntent(it, '取消订单');
-        const r = await sendIntent(it, '取消订单');
+        let r; try { r = await sendIntent(it, '取消订单'); } catch (e) { s.cancelErrs = (s.cancelErrs || 0) + 1; save(); throw e; }
         if (r.app) {
           s.cancelPrompts = (s.cancelPrompts || 0) + 1;
           s.nextTryAt = now + 15 * 60_000; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); return;
@@ -697,9 +710,15 @@ async function stepSlot(s) {
         s.onchainRevoked = true; save(); slotLog(s, '已在链上撤销策略方授权');
       }
       const r = await run('quant-client-local.mjs', ['sweep', '--index', String(s.index), '--address', s.address, '--to', OWNER, '--yes'], { timeoutMs: 300_000 });
-      const [u, b, v1, v2, w1] = await Promise.all([bal(A.USDC, s.address), bnb(s.address), bal(A.VUSDC, s.address), bal(A.VBTC, s.address), bal(A.WBNB, s.address)]);
-      if (u === 0n && v1 === 0n && v2 === 0n && w1 === 0n) {
+      // 同一个区块高度读余额（避免多节点高度不一读到假的 0）；极小零头（例如地址投毒打进来的灰尘）视同已收回
+      { const vm = /sent \d+ (vUSDC|vBTC) to/.exec(r.all); if (vm) { s.vSentToOwner = vm[1]; save(); } }
+      const bn = await pc.getBlockNumber();
+      const rd = (t) => pc.readContract({ address: t, abi: ERC20, functionName: 'balanceOf', args: [s.address], blockNumber: bn });
+      const [u, b, v1, v2, w1] = await Promise.all([rd(A.USDC), pc.getBalance({ address: s.address, blockNumber: bn }), rd(A.VUSDC), rd(A.VBTC), rd(A.WBNB)]);
+      if (u < 10n ** 16n && v1 < 10n ** 6n && v2 < 10n ** 4n && w1 < 10n ** 13n) {
         s.principalSwept = true;
+        // Venus 赎回不了时，工具会把 vUSDC 本身转回你的钱包：明确告诉用户要自己去 Venus 赎回
+        if (s.vSentToOwner) { slotLog(s, `⚠️ Venus 暂时无法赎回，已把 ${s.vSentToOwner} 直接转回你的币安钱包`); await notify(`${Number(s.alloc) > 0 ? '一笔 ' + s.alloc + 'U' : '补收的零钱'}：Venus 暂时无法赎回，工具已把 ${s.vSentToOwner}（Venus 存款凭证）直接转回你的币安钱包，钱没有少。请到 Venus 把它赎回成 USDC，下一轮才有 USDC 可以存。`); }
         if (!s.onchainRevoked) slotLog(s, '⚠️ 链上授权撤销未完成（本金已收回；授权本来就动不到本金，到期自动失效）');
         const got = Number(s.preSweepValue ?? 0);
         if (s.fundedOk && got < Number(s.alloc) * 0.995) {
@@ -718,13 +737,22 @@ async function stepSlot(s) {
       s.nextFeeCheck = now + 5 * 60_000;
       if (s.checkoutId) { try { await api('POST', `/api/v1/checkout/${s.checkoutId}/recover`, {}); } catch { /* ignore */ } }
       if (s.jobId) { const j = await getJob(s.jobId); if (j.orderId) { s.orderId = j.orderId; return ok(s, 'fee', '找到订单，进入结算'); } }
-      if (now - (s.orderSentAt || now) > 12 * 3600_000) { await notify(`一笔手续费付款一直没在平台登记（checkout ${s.checkoutId}），请到 agent.family 查看`); return ok(s, 'done', '手续费订单无法登记，已通知'); }
+      if (now - (s.orderSentAt || now) > 12 * 3600_000) { await notify(s.payUnknown ? `一笔手续费无法确认是否已付出（checkout ${s.checkoutId}），本金早已收回，请到 agent.family 查看` : `一笔手续费付款一直没在平台登记（checkout ${s.checkoutId}），请到 agent.family 查看`); return ok(s, 'done', '手续费订单无法登记，已通知'); }
       return;
     }
     case 'fee': {
       if (s.nextFeeCheck && now < s.nextFeeCheck) return;
       s.nextFeeCheck = now + 60_000;
-      const o = await getOrder(s.orderId);
+      let o;
+      try { o = await getOrder(s.orderId); }
+      catch (e) {
+        // 平台一直查不到这张订单：本金早已收回的话，超过期限就结案，不要永远占着「进行中」、挡住下一轮
+        if (s.principalSwept && s.endsAt && (s.errCount || 0) >= 4 && now > s.endsAt + ((s.shortfall || s.cancelReason) ? 86400_000 : 7 * 86400_000)) {
+          s.feeFinal = 'UNSETTLED_UNREACHABLE'; if (!s.cancelReason) st.stats.refunded += 1;
+          return ok(s, 'done', '平台订单一直查不到，本金早已收回，已结案（手续费金额很小，可到 agent.family 查看）');
+        }
+        throw e;
+      }
       s.orderStatus = o.status;
       if (o.status === 'DELIVERED' && s.shortfall) { if (!s.shortNotified) { s.shortNotified = true; await notify(`订单 ${s.orderId} 本金短少，未放款，请在挑战期内到 agent.family 提出争议`); } s.nextFeeCheck = now + 3600_000; return; }
       if (o.status === 'DELIVERED') {
@@ -1132,7 +1160,19 @@ const server = http.createServer(async (rq, rs) => {
         log('已送出问题回报给作者');
         return send(200, { ok: true, note: '已送出，作者会收到。谢谢回报！' });
       }
-      case '/api/refresh': await refreshEnv(true); await refreshBalances(); return send(200, { ok: true });
+      case '/api/refresh': {
+        // 「刷新状态」：钱包连线、余额、积分、策略清单、更新全部重读，出错在等待中的单也立刻重试一次（等待 App 确认中的不打扰）
+        await refreshEnv(true); await refreshRewards(true); await refreshBalances();
+        await allStrategies(true).catch(() => {});
+        updateCheck().catch(() => {});
+        const now = Date.now(); let retried = 0;
+        // 只对「重试不会多花钱、也不会多跳 App 确认」的步骤立即重试；授权、付费、取消、结算照原本的等待时间
+        const SAFE = new Set(['allocate', 'register', 'create', 'checkout', 'active', 'sweep', 'feerecover']);
+        for (const s of st.slots) if (SAFE.has(s.step) && s.nextTryAt > now && !(s.appWaitUntil > now)) { s.nextTryAt = 0; retried++; }
+        if (retried) save();
+        setTimeout(() => tick().catch(() => {}), 50);
+        return send(200, { ok: true, note: retried ? `已刷新，${retried} 笔单立即重新检查` : '已刷新' });
+      }
       case '/api/connect': {
         if (pairing?.running) return send(200, { ok: true });
         pairing = { running: true, out: '' };
@@ -1196,7 +1236,7 @@ async function updateCheck() {
   return u;
 }
 setTimeout(() => updateCheck().catch(() => {}), 60_000).unref();
-setInterval(() => updateCheck().catch(() => {}), 3600_000).unref(); // 每小时看一次官方 GitHub（只读一个小档案）
+setInterval(() => updateCheck().catch(() => {}), 15 * 60_000).unref(); // 每 15 分钟看一次官方 GitHub（只读一个约 10KB 的小档案）；必要更新会自动安装
 function exitWhenIdle(code, why) {
   log(`${why}（等目前步骤完成）`);
   const t = setInterval(() => {

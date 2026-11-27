@@ -785,17 +785,34 @@ async function cmdSweep() {
       if (nb === 0n) throw new Error(`Task wallet ${from} still has Venus positions but 0 BNB for gas; send a little BNB to it, then sweep again.`);
       let vn = await getNonce(from);
       for (const m of vHeld) {
-        const data = "0xdb006a75" + m.vb.toString(16).padStart(64, "0"); // redeem(uint256 redeemTokens)
-        const fees = await getFees();
-        const gas = await estimateGas({ from, to: m.vToken, value: "0", data });
-        const signed = signTransaction(pk, { chainId, nonce: vn, maxPriorityFeePerGas: fees.maxPriorityFeePerGas, maxFeePerGas: fees.maxFeePerGas, gas, to: m.vToken, value: "0", data });
-        const txHash = await sendRawTransaction(signed.raw, signed.hash);
-        process.stderr.write(`[quant] venus redeem ${m.symbol} nonce=${vn} tx=${txHash}\n`);
-        const rc = await waitReceipt(txHash);
-        if (rc.status !== "0x1") throw new Error(`Venus redeem ${m.symbol} reverted (${txHash}); NOT sweeping BNB so the wallet keeps gas for a retry.`);
+        // 先试赎回；赎回不了（零头太小被 Venus 拒绝、流动性不足等）就把 vToken 本身转回你的钱包，
+        // 绝不让本金卡在任务钱包（vToken 在你钱包里随时可以自己到 Venus 赎回）。
+        let redeemed = false;
+        try {
+          const data = "0xdb006a75" + m.vb.toString(16).padStart(64, "0"); // redeem(uint256 redeemTokens)
+          const fees = await getFees();
+          const gas = await estimateGas({ from, to: m.vToken, value: "0", data });
+          const signed = signTransaction(pk, { chainId, nonce: vn, maxPriorityFeePerGas: fees.maxPriorityFeePerGas, maxFeePerGas: fees.maxFeePerGas, gas, to: m.vToken, value: "0", data });
+          const txHash = await sendRawTransaction(signed.raw, signed.hash);
+          vn += 1n;
+          process.stderr.write(`[quant] venus redeem ${m.symbol} tx=${txHash}\n`);
+          const rc = await waitReceipt(txHash);
+          redeemed = rc.status === "0x1";
+        } catch (e) {
+          process.stderr.write(`[quant] venus redeem ${m.symbol} not possible (${e.message}); sending the vTokens to your wallet instead\n`);
+        }
         const left = BigInt((await balanceOfCall(m.vToken, from)) || "0x0");
-        if (left > 0n) throw new Error(`Venus redeem ${m.symbol} left ${left} vTokens (market liquidity?); retry later.`);
-        vn += 1n;
+        if (left > 0n) {
+          const data = encodeErc20Transfer(dest, left.toString());
+          const fees = await getFees();
+          const gas = await estimateGas({ from, to: m.vToken, value: "0", data });
+          const signed = signTransaction(pk, { chainId, nonce: vn, maxPriorityFeePerGas: fees.maxPriorityFeePerGas, maxFeePerGas: fees.maxFeePerGas, gas, to: m.vToken, value: "0", data });
+          const txHash = await sendRawTransaction(signed.raw, signed.hash);
+          vn += 1n;
+          process.stderr.write(`[quant] sent ${left} ${m.symbol} to ${dest} tx=${txHash}${redeemed ? " (left after redeem)" : ""}\n`);
+          const rc = await waitReceipt(txHash);
+          if (rc.status !== "0x1") throw new Error(`Sending ${m.symbol} to your wallet reverted (${txHash}); NOT sweeping BNB so the wallet keeps gas for a retry.`);
+        }
       }
     }
 

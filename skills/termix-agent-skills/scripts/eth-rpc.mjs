@@ -35,6 +35,8 @@ export async function rpc(method, params = [], { retries = RPC_RETRIES } = {}) {
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { throw new Error(`RPC ${method}: non-JSON response ${text.slice(0, 200)}`); }
+      const limited = res.status === 429 || res.status === 403 || (json.error && ([-32005, -32016, -32090].includes(json.error.code) || /rate.?limit|too many requests|request limit|limit exceeded/i.test(json.error.message || "") && !/gas required|intrinsic gas|out of gas|exceeds block gas/i.test(json.error.message || "")));
+      if (limited) throw new Error(`RPC ${method}: rate limited (${json.error?.code ?? res.status}) — rotating node`); // 限流：换下一个节点重试
       if (json.error) {
         // Definitive node response — surface it, do not retry.
         const e = new Error(`RPC ${method} error ${json.error.code}: ${json.error.message}`);
@@ -93,7 +95,8 @@ export async function estimateGas({ from, to, value, data }) {
 // "already known / nonce too low" node error — that means our tx already landed, so
 // we return the locally-computed hash instead of failing. Pass `knownHash` (the
 // value signTransaction returns) to enable this; without it, errors propagate.
-const ALREADY_BROADCAST = /already known|known transaction|already exists|nonce too low|replacement transaction underpriced/i;
+const ALREADY_BROADCAST = /already known|known transaction|already exists/i;
+const MAYBE_BROADCAST = /nonce too low|replacement transaction underpriced/i;
 export async function sendRawTransaction(rawHex, knownHash) {
   try {
     return await rpc("eth_sendRawTransaction", [rawHex]);
@@ -101,6 +104,11 @@ export async function sendRawTransaction(rawHex, knownHash) {
     if (knownHash && err.rpcError && ALREADY_BROADCAST.test(err.rpcError.message || "")) {
       process.stderr.write(`[eth-rpc] resend saw "${(err.rpcError.message || "").slice(0, 60)}" — tx already broadcast, using ${knownHash}\n`);
       return knownHash;
+    }
+    // nonce 已被用掉：只有在节点真的查得到这笔交易时才当成「已送出」，否则照实报错（避免拿一个从没广播过的哈希去空等）
+    if (knownHash && err.rpcError && MAYBE_BROADCAST.test(err.rpcError.message || "")) {
+      const tx = await rpc("eth_getTransactionByHash", [knownHash]).catch(() => null);
+      if (tx) { process.stderr.write(`[eth-rpc] nonce already used by our own tx ${knownHash}\n`); return knownHash; }
     }
     throw err;
   }
