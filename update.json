@@ -1,0 +1,413 @@
+{
+ "version": "1.0.0",
+ "commit": "6505ccf284061592ad04f5cd2604289b3619bb8b",
+ "critical": false,
+ "notes": {
+  "zh": "TermiX AutoDeposit 1.0 正式版",
+  "en": "TermiX AutoDeposit 1.0 release"
+ },
+ "files": [
+  {
+   "path": "LICENSE",
+   "sha256": "4820665b52d2077a7e8d3146c8a66017af6762180d0799b12548140c7ef53ec6",
+   "size": 1237
+  },
+  {
+   "path": "README.md",
+   "sha256": "25199d0ac290f6e8b0eaa3b076f18c8361eb966a05405b05d3123e30d0f8d3cf",
+   "size": 8849
+  },
+  {
+   "path": "SHA256SUMS.txt",
+   "sha256": "7d39474a4db6fbde0f647085951d9c40b4be236f4ffff7b3d56bb56ef8b195e2",
+   "size": 8663
+  },
+  {
+   "path": "Start-TermiX.vbs",
+   "sha256": "82a16bbafaaad52cda5c80f2ee0f37b74da2e56215555552d1847cb8e8816760",
+   "size": 1006
+  },
+  {
+   "path": "app/app-icon.svg",
+   "sha256": "c71d488610b89014a0db292ed49009c0245c8ee0249250fdfd3d3de7193b5276",
+   "size": 303
+  },
+  {
+   "path": "app/app.ico",
+   "sha256": "afa4f9b12e14993868b3d5f4b8d18ce3d9e1e59b72a1eebee969ee41a340df42",
+   "size": 25733
+  },
+  {
+   "path": "app/cli.mjs",
+   "sha256": "3060f8b76036ac9eb610276058b28ffbde5c82a3576ea89a190d1ecc98caa393",
+   "size": 9243
+  },
+  {
+   "path": "app/launcher.mjs",
+   "sha256": "3211dd114a3b2b88f990cb2ba8f84fbd10fefba53ac5afea2eb08d37e8194acc",
+   "size": 14709
+  },
+  {
+   "path": "app/openapp.mjs",
+   "sha256": "fcdc255b063ec2de81191fab5185d37f9e2e2b55c79f1cfe47705ec2a4772a81",
+   "size": 1811
+  },
+  {
+   "path": "app/server.mjs",
+   "sha256": "2034736173f5ac4f9fb01db475e6590de50c8f01e6591961aded844684f1bdc5",
+   "size": 101665
+  },
+  {
+   "path": "app/ui.html",
+   "sha256": "a091eba741c2dce190d88ae78aca461c8f3d930ad43eaa2192a0914e3ffb0a2f",
+   "size": 227428
+  },
+  {
+   "path": "app/updater.mjs",
+   "sha256": "aca6c0e292fcf891cbf2faab5de8a7810d37157609f4252245c8a2456781522c",
+   "size": 6654
+  },
+  {
+   "path": "app/window.cjs",
+   "sha256": "ed50ef304210d101013e0af33148451402dda4af75ba6f55e8567e2faaf74297",
+   "size": 2455
+  },
+  {
+   "path": "client-deps.tgz",
+   "sha256": "9aabc126397c027205226b108bed059377bd26bb8cc89266154693b3fafc0c15",
+   "size": 16029338
+  },
+  {
+   "path": "skills/termix-agent-skills/.clawhubignore",
+   "sha256": "62a19fa43c2bcddbf793d9f819b601dbf9df38638210180151ab0bbb23999bd8",
+   "size": 158
+  },
+  {
+   "path": "skills/termix-agent-skills/SKILL.md",
+   "sha256": "438d5e4115c08568ab275f904a1cd7c667a55a6e98601cec1b885e20fe2a7b69",
+   "size": 39143
+  },
+  {
+   "path": "skills/termix-agent-skills/VERSION",
+   "sha256": "d5b1f46669d1cff3be556b1656732c8777ad8ad3f3d05459cfb11dadb1f17d19",
+   "size": 7
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/a2a-runtime.md",
+   "sha256": "fd42bf77a89730d80f4ed82b71b4495d06cbbb586acb19f9433aad4673b4f54d",
+   "size": 21285
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/account-overview.md",
+   "sha256": "5dda168a4eabb37ce9ffb516b3bcb98ce2a0c799000174b467d4b742e75516b8",
+   "size": 4344
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/agent-info.md",
+   "sha256": "fcf8a6db5a073d0347f8fc3da101b1aec55fd375418f86b728114da2345c6831",
+   "size": 2711
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/binance-agent-id.md",
+   "sha256": "b43b3062e11351faa20fb20c25bff8c1db559ba935e70008be0362a2a89a7fa7",
+   "size": 7436
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/campaign-provider.md",
+   "sha256": "b1e57335fbddb3ffa4cbbed3bdce23c639f0ff5dd3b90f1ad57594c74d918c2e",
+   "size": 7315
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/check-dispute.md",
+   "sha256": "0dd9a3022377a04738733d19620bb85836802b544ae9ef23de66290c64cf711d",
+   "size": 2814
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/client-checkout-fund.md",
+   "sha256": "8d2ba7bd4736c008384bdc22c73259463f3a6734259ad81eab0d7ca9e193bbe2",
+   "size": 7508
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/client-publish-brief.md",
+   "sha256": "b633a4a6e779dd3e4b7e1573e1a0008590160a17bf758e035f222e8241d66fb1",
+   "size": 2650
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/client-review-offers.md",
+   "sha256": "e6c38dfc5e8b7ffaea96d3b5b60c2b49a7e9110043b99c3155c15cd50452d633",
+   "size": 1645
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/env.md",
+   "sha256": "31c07c0d6f07eeea97ff1067c0562a91bb7aff41603dfc9752eedd66c97da945",
+   "size": 13051
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/link.md",
+   "sha256": "22f7c9aa1f21ab9b5b4735323be72c7a61169c0f0fd4934d4186806bab9dd362",
+   "size": 8399
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/list-agents.md",
+   "sha256": "7114480eebd91dff54c94246888dc076dbf38ed89c42e3b30b09c824b901c889",
+   "size": 2019
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/onboarding.md",
+   "sha256": "14eccab5bdd62627e4706843c664b545e399b455c3e344da708f4ec26f271733",
+   "size": 11291
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/onchain-tx.md",
+   "sha256": "cf2de7d8a27967964f2a58a52a7bdb7ab0a79abe702d1fc5122b45552da1d8fc",
+   "size": 8082
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/protocol-stats.md",
+   "sha256": "dc53d9f76396eee9e00867ea43fa9dbcb3731f3ae02a61cb0384b9cc6a37508a",
+   "size": 1488
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-create-agent.md",
+   "sha256": "9218d6f0a91e3d8648f552ed726319bca589d3a33d71ab79574578620112cca5",
+   "size": 2839
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-dispute.md",
+   "sha256": "463a5d8b1e18ea9ddda7834ad48de517a4808f80fbe037c2a8e9cf8691d019e1",
+   "size": 3349
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-listing.md",
+   "sha256": "e9a260f46f3a3b750494afdb39d5599da10e9bdd88fae7f6169bb4aaab2e05bc",
+   "size": 3534
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-offer.md",
+   "sha256": "8814c37608ba736590293d6fd4d63bac309b334616de805c35304c1eb5f96b43",
+   "size": 4010
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-order-delivery.md",
+   "sha256": "95dafd1820c5510c4c0af26a08fd4796112a02f3419776134ee6918359321a25",
+   "size": 4614
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/provider-stake.md",
+   "sha256": "65fcd949d20e6569973bb314d6fbd25925e60b049627f11bf55161340c55f790",
+   "size": 3947
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/quant-client.md",
+   "sha256": "cc91739c88abc875674a0c02d898a13cec605fbf1ce23989ea1deea3f717bd41",
+   "size": 6820
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/quant-provider.md",
+   "sha256": "bff9c840ede8c168c9c015c535f13b04b95011c1c25f371ad1b66fee8e82fabe",
+   "size": 35620
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/terms.md",
+   "sha256": "ebeed0299189003e402915b57bdaf9fb99c2528a243e689fc0494463aa69642d",
+   "size": 3880
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/upgrade.md",
+   "sha256": "b49199fb1482caa0c9a6ff398b1c3070405c1d42fb22c951fbff1c9159a1b0be",
+   "size": 4588
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/wallet-login.md",
+   "sha256": "b1e8ea531e78e32d18adec1209b29b848c013aaf11e70b517d8b96fad4223d95",
+   "size": 10578
+  },
+  {
+   "path": "skills/termix-agent-skills/docs/watch.md",
+   "sha256": "a45ab5f6bfca4c857e9d865ac59ff3363ef9ff6573c05561eaebb6acabc2d5a6",
+   "size": 11755
+  },
+  {
+   "path": "skills/termix-agent-skills/examples/linked-provider-delivery.md",
+   "sha256": "b63f6d553f547f5ef0a180883df1d530d12d6e16d693bf27b76df8e6da7dfbfa",
+   "size": 3838
+  },
+  {
+   "path": "skills/termix-agent-skills/examples/read-only-queries.md",
+   "sha256": "18d398d85fae4455b05c3da534ae1eea8e9762b8cfb05a04318cf895cc8442c2",
+   "size": 1143
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/a2a-runtime.mjs",
+   "sha256": "d3bb029aaac618e2e722af9f05d8e32c42c0e54b7350184972d3a0b249e72acb",
+   "size": 71282
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-agent.mjs",
+   "sha256": "d298424229206d3f5864226f07e64d2370856ce43b31df9d0c8896d1434453d5",
+   "size": 521
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-api.mjs",
+   "sha256": "fcf0348b7a2d656213f83b7030f8c53b62d232cd8a1d0a30c81ad31bb22a0937",
+   "size": 5967
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-chain.mjs",
+   "sha256": "2c17b5721895157f9c8fcc32ebbb44c74755df2c302eed03958f120d316e7375",
+   "size": 8762
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-client.mjs",
+   "sha256": "2392d55b239271803bc0c816e72f2a02d8a92b77812589f174502054e6659111",
+   "size": 4322
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-config.mjs",
+   "sha256": "06d8a1dc388b353c7543ba45fa5acd35736276ecf72809fd7974b006c46c7b31",
+   "size": 159
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-credentials.mjs",
+   "sha256": "5989761ead854cfc53806f9d50b66242deaaee5365391a3e3ec4bfe1a9fc66d0",
+   "size": 8226
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-get.mjs",
+   "sha256": "3a71933f10be52e5df040ce9a227f930193704b8c9d1d2778ec2494b6c8711c2",
+   "size": 403
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-http.mjs",
+   "sha256": "e8b9f7a5cf3303e0d784d8a6d408129a24e8b8650bcab854a60b8164c6b13507",
+   "size": 1961
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-link.mjs",
+   "sha256": "713bba9f6c8a84eeeed7fd6d955eb31b2448c88f8756b5060e34b1d193e100f3",
+   "size": 15051
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-llm.mjs",
+   "sha256": "708081877441398a46560acdfe14754b679a7056242f8818a4f687c1d8eaff9d",
+   "size": 6394
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-next.mjs",
+   "sha256": "9944ae12beef9ce8e8ce61e0ae1f02ed7974b9dbf3186335b0f1ff0b43b92aa2",
+   "size": 28473
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-outbound-guard.mjs",
+   "sha256": "977be2400940d0ab512f1f252fd94f74efc20512bc54baa80d02357bcaf83775",
+   "size": 12135
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-policy.mjs",
+   "sha256": "d7269d629e77fce57b6f61a7d580c9600341d649e5c1430f28d08e4d1e043499",
+   "size": 8797
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-quant.mjs",
+   "sha256": "07ac943c1dd632e4fce88eead9034cd29c3f18684588437c18933d7b01ae35f3",
+   "size": 93993
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-session.mjs",
+   "sha256": "368898e73c17abf5833210cb4fab422876ac6e884de2396c396bd494b66e2bb1",
+   "size": 6913
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-sign-message.mjs",
+   "sha256": "7f788b8099ac875ad68290512a15140baa5d041c61d58a3b07fcc42a1227f623",
+   "size": 2653
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-sign-poll.mjs",
+   "sha256": "e85fc8902d68eb009f3e60f5a8e30d16342f57696158152e1d3a2d275bcdd668",
+   "size": 1027
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-terms.mjs",
+   "sha256": "483ce7361800e72a56220c799e6909961c88e03487e6f62a0c475e8024d3df9c",
+   "size": 11543
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-tx.mjs",
+   "sha256": "db20b20b94033432b805046a762980b7ac1462ba1bbaba0b2b571c22305eae7c",
+   "size": 19756
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-update.mjs",
+   "sha256": "4ef632c0deee1187169c2aa228e6c29c2aea5c0d35fc3f1d569fa3eff9b8c967",
+   "size": 11847
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-upload.mjs",
+   "sha256": "7f50f041662d7d81a28c064686cce895d42f91e07d7cf7d76c8f773654d974bb",
+   "size": 2586
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-wallet.mjs",
+   "sha256": "655b8a0918b75d74a5444e8fd5873d3fb4a4e005cde33706295818a5403cc8db",
+   "size": 28698
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-watch.mjs",
+   "sha256": "056eed0221ec3c8fdc2df0ebc2f875ef945aadc46f912717b482f6e3f1371079",
+   "size": 27911
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/aacp-web.mjs",
+   "sha256": "351e03bbbc9a5c0209e2b9e7a9657b615729189fa3e34b87451e0da1b0a55aec",
+   "size": 886
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/eth-rpc.mjs",
+   "sha256": "bc5b2ddf1612476eee7cffa585733f9f2864c2a3e6c79edfc7a44572c1919994",
+   "size": 5373
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/quant-client-local.mjs",
+   "sha256": "718b350f30de43a6dbca351ad814cb424d7bed2b1c024eb7588b97cf379f057a",
+   "size": 51827
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/quant-provider-enc-key.mjs",
+   "sha256": "a9aee2542c142aedc34922e3a90aeb52b531a6717d20c6b90278848a151a4f7f",
+   "size": 5954
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/quant-task-wallet-web.mjs",
+   "sha256": "0551e01025fecc0d68a26887b003afd01e41035b4f54593ae106daa0e855ce57",
+   "size": 3389
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/quant-task-wallet.mjs",
+   "sha256": "d22d753b4dc565a0b7a1a2b846a47de7c85a67981f30dea5c1d45d5df4470fef",
+   "size": 8848
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/vendor/README.md",
+   "sha256": "fb2d0c4ed7e7ae33158ffc1d4039efd07b631467d06f94ef160936477963b1ec",
+   "size": 614
+  },
+  {
+   "path": "skills/termix-agent-skills/scripts/vendor/eth-signer.mjs",
+   "sha256": "bee3e078c3201bc15f299806f920076c95a78377dfba616ef26582bc6d81b8c1",
+   "size": 77968
+  },
+  {
+   "path": "使用说明.txt",
+   "sha256": "72cc3cfc8749be88840d19fe6583fa72ff1200bc996d8c1b32dbca5b1d48789d",
+   "size": 10293
+  },
+  {
+   "path": "给AI的使用说明.md",
+   "sha256": "1765608cafd489bd1674bee94d36f3fe99f07d136d7ff8178f219c62aba7e711",
+   "size": 4379
+  }
+ ],
+ "publishedAt": "2026-11-27T11:55:47.196Z",
+ "sig": "pRRvphj2AkXedX+v+cDBLK/RmuaBp/gkDVr6kgpV7z9P2M98MHclVkDPz+YHz9ifbH9WYoXoNLhIeIHFmaNNDw=="
+}
