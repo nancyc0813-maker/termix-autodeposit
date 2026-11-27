@@ -9,6 +9,7 @@
 //   4. 任何非预期状况 → 该笔暂停并提醒，不继续动钱。
 //   5. 控制页面只接受本机连接 + 随机访问码；不开 CORS。
 //   6. 在线更新只读官方 GitHub、只接受作者签名过的清单，且只更新程序文件（updater.mjs），不碰 data/。
+import { tgText, tgTitle } from './tg-i18n.mjs';
 import http from 'node:http';
 import { spawn, execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, copyFileSync, readdirSync, appendFileSync, statSync, unlinkSync, rmSync } from 'node:fs';
@@ -20,7 +21,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.7';
+const VERSION = '1.0.8';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误反馈收件箱（只收使用者按下「反馈问题」发送的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -117,7 +118,7 @@ async function notify(text, { always = false, tag = '' } = {}) {
     try {
       await fetch(`https://api.telegram.org/bot${settings.tgToken}/sendMessage`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id: settings.tgChatId, text: `[TermiX 自动存款] ${text}` }),
+        body: JSON.stringify({ chat_id: settings.tgChatId, text: `${tgTitle(settings.lang)} ${tgText(text, settings.lang)}` }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch { /* 通知失败不影响主流程 */ }
@@ -1137,6 +1138,7 @@ const server = http.createServer(async (rq, rs) => {
         }
         if (b.maxRounds !== undefined) n.maxRounds = Math.max(0, Math.min(150, Math.floor(Number(b.maxRounds) || 0)));
         if (b.autoUpdate !== undefined) n.autoUpdate = !!b.autoUpdate;
+        if (b.lang !== undefined && ['zh', 'en', 'ko', 'vi', 'ja'].includes(b.lang)) n.lang = b.lang;
         if (b.maxPerRoundU !== undefined) n.maxPerRoundU = Math.max(10, Math.min(1000, Math.floor(Number(b.maxPerRoundU) || 20)));
         let bad = '';
         if (b.tgToken !== undefined && b.tgToken !== '已设置') { if (b.tgToken === '') n.tgToken = ''; else if (/^\d{5,12}:[A-Za-z0-9_-]{30,50}$/.test(b.tgToken)) n.tgToken = b.tgToken; else bad = 'Bot Token 格式不对，没有保存'; }
@@ -1159,8 +1161,8 @@ const server = http.createServer(async (rq, rs) => {
       case '/api/tg-test': {
         if (!settings.tgToken || !settings.tgChatId) return send(400, { error: '请先填写并保存 Bot Token 和 Chat ID' });
         try {
-          const r = await fetch(`https://api.telegram.org/bot${settings.tgToken}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: settings.tgChatId, text: '[TermiX 自动存款] 测试：收到这则代表 TG 提醒正常' }), signal: AbortSignal.timeout(10_000) });
-          if (!r.ok) return send(400, { error: 'Telegram 发送失败（请检查 Bot Token、Chat ID，并先对机器人按 Start）' });
+          const r = await fetch(`https://api.telegram.org/bot${settings.tgToken}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: settings.tgChatId, text: `${tgTitle(settings.lang)} ${tgText('[TermiX 自动存款] 测试消息', settings.lang) === '[TermiX 自动存款] 测试消息' ? '测试：收到这则代表 TG 提醒正常' : tgText('[TermiX 自动存款] 测试消息', settings.lang)}` }), signal: AbortSignal.timeout(10_000) });
+          if (!r.ok) return send(400, { error: ', settings.lang)}`Telegram 发送失败（请检查 Bot Token、Chat ID，并先对机器人按 Start）' });
         } catch { return send(400, { error: '连不上 Telegram，请检查网络' }); }
         return send(200, { ok: true, note: '已发出测试消息，请到 Telegram 查看' });
       }

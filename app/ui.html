@@ -948,7 +948,7 @@ function render(){
   renderUpd();segSync();renderHero();
   $('ver').textContent='AutoDeposit v'+(S.version||'');$('bk').textContent='密钥备份位置：'+S.backupDir+'（任务钱包里还有钱时请保留这个文件夹）';
 }
-let UIV0='';async function load(){try{S=await call('state');if(S.uiv){if(!UIV0)UIV0=S.uiv;else if(S.uiv!==UIV0){location.reload();return}}render()}catch(e){$('dot').className='dot err';$('pillTxt').textContent=String(e.message).includes('访问码')?'请从桌面图标打开':'工具未运行'}}
+let UIV0='';async function load(){try{S=await call('state');if(S.settings&&S.settings.lang!==LANG)call('settings',{lang:LANG}).catch(()=>{});if(S.uiv){if(!UIV0)UIV0=S.uiv;else if(S.uiv!==UIV0){location.reload();return}}render()}catch(e){$('dot').className='dot err';$('pillTxt').textContent=String(e.message).includes('访问码')?'请从桌面图标打开':'工具未运行'}}
 async function act(p,b){try{const r=await call(p,b||{});if(r.note)toast(r.note);else if(p!=='refresh')toast('已完成');await load()}catch(e){toast(e.message,true)}}
 function retry(id){act('retry',{id})}
 $('tSlots').addEventListener('click',ev=>{const b=ev.target.closest('[data-retry]');if(b)retry(b.dataset.retry)});
