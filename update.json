@@ -1,10 +1,10 @@
 {
- "version": "1.0.7",
- "commit": "f4f7e8a28f6c490ebb7d30b69b81e552ecaab020",
+ "version": "1.0.8",
+ "commit": "fbfe849876fda57a9e5dd01018379ac75e1ae2a1",
  "critical": true,
  "notes": {
-  "zh": "必要更新：全面检查后的修正——五种语言完整翻译、状态显示更准确、App 确认提醒更完整、说明更清楚。",
-  "en": "Required update: full-audit fixes — complete translations in all 5 languages, accurate status, complete App confirmation reminders, clearer explanations."
+  "zh": "TG 通知会跟着工具介面语言（中、英、韩、越、日）。",
+  "en": "Telegram alerts now follow the tool's language (zh/en/ko/vi/ja)."
  },
  "files": [
   {
@@ -19,8 +19,8 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "eb9b713c6cb11be0c944712243d0ba743638655b429055f3fa3f5a3befb9da10",
-   "size": 8663
+   "sha256": "2e96cf46f77f2e6d397b2895226a8a031056205f1e25cb698a6da7f8950cca6d",
+   "size": 8745
   },
   {
    "path": "Start-TermiX.vbs",
@@ -54,13 +54,18 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "1c6f0a87f4b41e9e1cc099d1da5e281500b3e1fe46aabb05c6469f525e268a4b",
-   "size": 107826
+   "sha256": "8952d6e9934ac4c8d35dca8859784b54e09bf188ba675e566f8f6837a8581aea",
+   "size": 108196
+  },
+  {
+   "path": "app/tg-i18n.mjs",
+   "sha256": "62b755fd3ed654c9af4514afbcb6f5ff505b33b48df62a3ddceedbd28e713231",
+   "size": 22884
   },
   {
    "path": "app/ui.html",
-   "sha256": "18f9accefe3a4b38d55646dfdc54d12ba5f66e2483daa525163b013abdff98e4",
-   "size": 261943
+   "sha256": "4ad6f1886b65bbe42a6efe4032aa689ccf176a2c39811dcaf97751eb2d031960",
+   "size": 262024
   },
   {
    "path": "app/updater.mjs",
@@ -408,6 +413,6 @@
    "size": 4429
   }
  ],
- "publishedAt": "2026-11-27T17:27:32.275Z",
- "sig": "ruCLG2v+Gwaxz9qSB4yJxaCnkWeNeYNtdkn3wpquguPxxj4X7U8JFWFMGCUy7QrC+9a1AM4uBH9tUJI3nS2LAQ=="
+ "publishedAt": "2026-11-27T17:49:21.080Z",
+ "sig": "W1HW5PuHR0JljDVEIP6YjwSKMggpT0+UWwC24WuV509Fq+w/hGXQa0q4hGh7r39Hkvo5ToYcHmtsHLur1r9xBA=="
 }
