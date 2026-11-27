@@ -20,7 +20,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -650,7 +650,7 @@ async function stepSlot(s) {
       if (!s.orderSentAt && /refusing/i.test(r.all)) { await abortSlot(s, '手续费交易内容不符安全规则，已拒绝付款'); await notify(`一笔 ${s.alloc}U：后台送来的付费交易不符安全规则，已拒绝并收回本金。原因：${lastLine(r.all)}`); return ok(s, 'sweep'); }
       if (needsApp(r.all) && /createOrder/.test(r.all)) { s.orderSentAt = now; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-pay'; save(); await notify('请在币安 App 确认「付手续费」交易', { tag: s.id }); return; }
       if (needsApp(r.all) && !s.orderSentAt) {
-        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-approve'; await notify('第一次需要在币安 App 按「确认」授权手续费额度（只要一次），按完会自动继续', { tag: s.id }); return; }
+        s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-approve'; await notify('第一次需要在币安 App 按「确认」授权手续费额度（额度用完才会再请你确认），按完会自动继续', { tag: s.id }); return; }
       const j = await getJob(s.jobId);
       if (j.orderId) { s.orderId = j.orderId; s.orderedAt = now; return ok(s, 'wait_accept', '手续费已付，等策略方接单'); }
       if (s.orderSentAt) return; // 下一轮补登记
