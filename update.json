@@ -1,6 +1,6 @@
 {
  "version": "1.0.0",
- "commit": "6505ccf284061592ad04f5cd2604289b3619bb8b",
+ "commit": "961017fa708200e74ffe22a8b43882dbc08667c6",
  "critical": false,
  "notes": {
   "zh": "TermiX AutoDeposit 1.0 正式版",
@@ -14,12 +14,12 @@
   },
   {
    "path": "README.md",
-   "sha256": "25199d0ac290f6e8b0eaa3b076f18c8361eb966a05405b05d3123e30d0f8d3cf",
-   "size": 8849
+   "sha256": "9cd70b9d01f6ee0a1c5b462de3843d725acb7217b6ce63283d478c1794654145",
+   "size": 8900
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "7d39474a4db6fbde0f647085951d9c40b4be236f4ffff7b3d56bb56ef8b195e2",
+   "sha256": "989afab1446570a22786db2032b6c17e4d1eb3f8448df25b64757fc9d6157a90",
    "size": 8663
   },
   {
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T11:55:47.196Z",
- "sig": "pRRvphj2AkXedX+v+cDBLK/RmuaBp/gkDVr6kgpV7z9P2M98MHclVkDPz+YHz9ifbH9WYoXoNLhIeIHFmaNNDw=="
+ "publishedAt": "2026-11-27T11:56:13.711Z",
+ "sig": "B1uP1bEojvekwvDsF9X16n/TH5Be8R2ha+7Md2wfvrupBJsHlzXRDP9VcK37jXijVbdCpvvFPd+DgTSRohvKAQ=="
 }
