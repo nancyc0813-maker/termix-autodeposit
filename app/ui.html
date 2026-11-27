@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22%3E%3Crect x=%228%22 y=%228%22 width=%22240%22 height=%22240%22 rx=%2256%22 fill=%22#0e0f10%22/%3E%3Cpath d=%22M167.9 92.5 A62 62 0 1 1 88.1 92.5%22 fill=%22none%22 stroke=%22#2fc45f%22 stroke-width=%2230%22 stroke-linecap=%22round%22/%3E%3Ccircle cx=%22128%22 cy=%2270%22 r=%2222%22 fill=%22#2fc45f%22/%3E%3C/svg%3E">
+<title>AutoDeposit · TermiX 量化自动存款</title>
+<style>
+:root{
+  --bg:#0c0c0e;--bg2:#111113;--card:#1c1c1e;--card2:#232326;--line:#2a2a2c;--line2:#38383b;
+  --txt:#f5f5f7;--dim:#a1a1a6;--mute:#6e6e73;
+  --green:#41c463;--green2:#2aa04c;--red:#ff453a;--amber:#ffb340;--blue:#1b76dc;--blue2:#3b8ff0;--gold:#f0b90b;
+  --r:18px;--rs:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* nav */
+nav{position:sticky;top:0;z-index:5;background:rgba(12,12,14,.82);backdrop-filter:saturate(180%) blur(16px);border-bottom:1px solid var(--line)}
+.nav{max-width:1200px;margin:0 auto;height:60px;padding:0 24px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.mark{width:30px;height:30px;border-radius:8px;overflow:hidden;flex:none}
+.mark svg{width:30px;height:30px;display:block}
+.brand small{color:var(--mute);font-weight:500;font-size:13px;padding-left:10px;border-left:1px solid var(--line2)}
+.sp{flex:1}
+.chip{display:flex;align-items:center;gap:8px;height:34px;padding:0 13px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;color:var(--dim);white-space:nowrap}
+.chip b{color:var(--txt);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+.dot.on{background:var(--green);box-shadow:0 0 0 0 rgba(65,196,99,.5);animation:pulse 2s infinite}
+.dot.warn{background:var(--amber)}.dot.err{background:var(--red)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(65,196,99,.45)}70%{box-shadow:0 0 0 8px rgba(65,196,99,0)}100%{box-shadow:0 0 0 0 rgba(65,196,99,0)}}
+.bnbmark{width:16px;height:16px;border-radius:50%;background:var(--gold);display:grid;place-items:center}
+.bnbmark i{width:6px;height:6px;background:#1a1a1a;transform:rotate(45deg)}
+.menu{position:relative}
+.langsel{height:34px;padding:0 30px 0 13px;border-radius:99px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2398989f' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:13px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.langsel:hover{color:var(--txt);border-color:var(--line2)}
+.langsel option{background:var(--card2);color:var(--txt)}
+#awLeft{margin-left:6px}
+.plan{display:flex;flex-direction:column;gap:10px}
+.prow{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) 34px;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--bg2)}
+.prow select,.prow input{width:100%;min-width:0;height:38px;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--txt);font:inherit;font-size:13px;padding:0 10px}
+.prow select:focus,.prow input:focus{outline:0;border-color:var(--blue2)}
+.prow .meta{grid-column:1 / -1;font-size:12px;color:var(--mute);display:flex;gap:10px;flex-wrap:wrap}
+.prow .meta b{color:var(--dim);font-weight:600}
+.prow .rm{all:unset;cursor:pointer;width:34px;height:34px;border-radius:99px;display:grid;place-items:center;color:var(--mute);border:1px solid var(--line)}
+.prow .rm:hover{color:var(--red);border-color:var(--red)}
+.psum{font-size:12.5px;color:var(--dim)}.psum.bad{color:var(--amber)}
+@media(max-width:560px){.prow{grid-template-columns:1fr 1fr 34px}.prow select.ps{grid-column:1 / -1}}
+.ib{width:34px;height:34px;border-radius:99px;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);color:var(--dim);cursor:pointer}
+.ib:hover{color:var(--txt);border-color:var(--line2)}
+.dd{position:absolute;right:0;top:42px;min-width:220px;background:var(--card2);border:1px solid var(--line2);border-radius:14px;padding:6px;display:none;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.dd.on{display:block}
+.dd button{all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;font-size:13.5px;cursor:pointer;color:var(--txt)}
+.dd button:hover{background:rgba(255,255,255,.06)}
+.dd button small{display:block;color:var(--mute);font-size:11.5px}
+.dd hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+.dd .danger{color:var(--red)}
+
+.wrap{max-width:1200px;margin:0 auto;padding:28px 24px 64px}
+.eyebrow{font-size:12px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+h1{font-size:30px;font-weight:600;letter-spacing:-.025em;margin:6px 0 6px}
+.lead{color:var(--dim);font-size:14.5px;max-width:640px}
+.tags{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.tg{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12px;color:var(--dim)}
+.tg svg.i{width:13px;height:13px}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:24px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}.c5{grid-column:span 5}.c4{grid-column:span 4}.c6{grid-column:span 6}.c3{grid-column:span 3}
+@media(max-width:960px){.c8,.c7,.c5,.c4,.c6{grid-column:span 12}.c3{grid-column:span 6}}
+@media(max-width:560px){.c3{grid-column:span 12}.nav .chip.addr,.brand small{display:none}.nav{padding:0 16px}.wrap{padding:20px 16px 48px}h1{font-size:24px}.runline{flex-wrap:wrap}.runline .btn{width:100%}#pHist th:nth-child(2),#pHist td:nth-child(2){display:none}.tl .st{font-size:10.5px;line-height:1.3;padding:0 2px}#pHist td,#pHist th{padding:11px 6px}#pHist .pill{font-size:11px;padding:0 7px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.ch{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.ch h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.ch .sub{margin-left:auto}
+.sub{color:var(--mute);font-size:12.5px}
+
+/* stats */
+.stat{padding:16px 18px;border-radius:16px}
+.stat .lb{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim)}
+.stat .lb span.ico{width:24px;height:24px;border-radius:7px;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;color:var(--dim)}
+.stat .lb svg.i{width:13px;height:13px}
+.stat .v{font-size:26px;font-weight:600;margin-top:12px;line-height:1.1}
+.stat .v small{font-size:12.5px;color:var(--dim);font-weight:500;margin-left:5px;letter-spacing:0}
+.stat .s{font-size:12px;color:var(--mute);margin-top:6px}
+.stat.tp{background:linear-gradient(160deg,rgba(240,185,11,.10),rgba(28,28,30,1) 55%);border-color:rgba(240,185,11,.22)}
+.stat.tp .v{color:#ffd45c}
+
+/* hero control */
+.hero{display:flex;flex-direction:column;gap:18px;height:100%}.hero>.row:last-child{margin-top:auto}
+.runline{display:flex;align-items:center;gap:14px}
+.state{font-size:20px;font-weight:600;letter-spacing:-.015em}
+.state small{display:block;font-size:13px;color:var(--dim);font-weight:400;letter-spacing:0;margin-top:2px}
+.btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 20px;border-radius:99px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);font-family:inherit;font-size:14px;font-weight:600;line-height:1;cursor:pointer;transition:background .15s,border-color .15s,transform .05s;white-space:nowrap}
+.btn:hover{background:#2c2c30}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.38;cursor:not-allowed;transform:none}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{background:var(--blue2)}
+.btn.go{background:var(--green2);border-color:var(--green2);color:#fff;height:48px;padding:0 26px;font-size:15px}
+.btn.go:hover{background:#31b357}
+.btn.ghost{background:transparent}
+.btn.red{color:var(--red);border-color:rgba(255,69,58,.35);background:rgba(255,69,58,.06)}
+.btn.red:hover{background:rgba(255,69,58,.12)}
+.btn.sm{height:32px;padding:0 14px;font-size:12.5px}
+.btn svg.i{width:15px;height:15px}
+
+/* settings */
+.field{display:flex;flex-direction:column;gap:8px}
+.field>label{font-size:12.5px;color:var(--dim);display:flex;justify-content:space-between}
+.field>label span{color:var(--mute)}
+.inp{display:flex;align-items:center;height:44px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);padding:0 14px;transition:border-color .15s}
+.inp:focus-within{border-color:var(--blue2);box-shadow:0 0 0 3px rgba(27,118,220,.18)}
+.inp input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--txt);font-family:inherit;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.inp em{font-style:normal;color:var(--mute);font-size:13px}
+.inp input::-webkit-inner-spin-button,.inp input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.inp input[type=number]{-moz-appearance:textfield}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;height:28px;padding:0 12px;border-radius:99px;background:var(--card2);border:1px solid var(--line);font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.seg button:hover{color:var(--txt);border-color:var(--line2)}
+.seg button.on{background:rgba(27,118,220,.16);border-color:rgba(59,143,240,.55);color:#cfe3ff}
+.hint{font-size:12px;color:var(--mute);line-height:1.6}
+
+.est{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:14px;background:var(--bg2);overflow:hidden}.est>div{padding:14px 16px}.est>div+div{border-left:1px solid var(--line)}.est .k{font-size:12px;color:var(--mute)}.est .v{font-size:18px;font-weight:600;margin-top:4px}.est .v small{font-size:12px;color:var(--dim);font-weight:500;margin-left:4px}.est .v.y{color:#ffd45c}
+@media(max-width:560px){.est{grid-template-columns:1fr}.est>div+div{border-left:0;border-top:1px solid var(--line)}}
+.appwait{display:none;margin-top:24px;border:1px solid rgba(255,179,64,.5);background:linear-gradient(160deg,rgba(255,179,64,.12),var(--card) 60%);border-radius:var(--r);padding:20px}.appwait h2{font-size:16px;font-weight:600;color:#ffd99a;display:flex;align-items:center;gap:8px}.appwait ol{margin:12px 0 0 20px;color:var(--dim);font-size:13.5px;line-height:1.9}.appwait ol b{color:var(--txt)}
+/* safety */
+.chk{display:flex;flex-direction:column;gap:2px}
+.ck{display:flex;gap:12px;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--line)}
+.ck:last-child{border-bottom:0}
+.ck .b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;margin-top:1px}
+.ck .b svg.i{width:12px;height:12px;stroke-width:2.6}
+.ck.ok .b{background:rgba(65,196,99,.14);color:var(--green)}
+.ck.no .b{background:rgba(255,179,64,.14);color:var(--amber)}
+.ck b{font-size:13.5px;font-weight:600;display:block}
+.ck p{font-size:12px;color:var(--mute);margin-top:1px}
+.shield{margin-top:14px;padding:14px;border-radius:14px;background:linear-gradient(160deg,rgba(65,196,99,.08),rgba(65,196,99,.02));border:1px solid rgba(65,196,99,.2);font-size:12.5px;color:#bfe8c9;line-height:1.65}
+.shield b{color:#e6f7ea}
+
+/* active round */
+.round{border:1px solid var(--line);border-radius:16px;padding:18px;background:var(--bg2)}
+.round+.round{margin-top:12px}
+.rh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.av{width:40px;height:40px;border-radius:12px;background:linear-gradient(145deg,#2f3a52,#1d2232);display:grid;place-items:center;border:1px solid var(--line2);color:#9fb7ff}
+.av svg.i{width:19px;height:19px}
+.rh .nm{font-weight:600;font-size:14.5px}
+.rh .nm small{display:block;color:var(--mute);font-weight:400;font-size:12px}
+.amt{margin-left:auto;text-align:right}
+.amt .v{font-size:22px;font-weight:600}
+.amt .v small{font-size:12px;color:var(--dim);font-weight:500;margin-left:4px}
+.amt .s{font-size:12px;color:#ffd45c}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid}
+.pill.run{color:var(--green);border-color:rgba(65,196,99,.32);background:rgba(65,196,99,.06)}
+.pill.wait{color:var(--amber);border-color:rgba(255,179,64,.4);background:rgba(255,179,64,.06)}
+.pill.blue{color:#7ab4ff;border-color:rgba(59,143,240,.4);background:rgba(59,143,240,.07)}
+.pill.err{color:var(--red);border-color:rgba(255,69,58,.4);background:rgba(255,69,58,.07)}
+.pill.mute{color:var(--dim);border-color:var(--line2);background:transparent}
+.tl{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin:20px 0 6px;position:relative}
+.tl .st{position:relative;text-align:center;font-size:12px;color:var(--mute)}
+.tl .st:before{content:"";position:absolute;top:10px;left:-50%;right:50%;height:2px;background:var(--line2)}
+.tl .st:first-child:before{display:none}
+.tl .st.done:before,.tl .st.cur:before{background:var(--green2)}
+.tl .o{position:relative;z-index:1;width:22px;height:22px;margin:0 auto 8px;border-radius:50%;background:var(--card2);border:2px solid var(--line2);display:grid;place-items:center}
+.tl .o svg.i{width:11px;height:11px;stroke-width:3}
+.tl .st.done{color:var(--dim)}
+.tl .st.done .o{background:var(--green2);border-color:var(--green2);color:#fff}
+.tl .st.cur{color:var(--txt);font-weight:600}
+.tl .st.cur .o{border-color:var(--green);background:var(--bg2);box-shadow:0 0 0 4px rgba(65,196,99,.16)}
+.tl .st.cur .o:after{content:"";width:8px;height:8px;border-radius:50%;background:var(--green)}
+.tl .st.bad .o{border-color:var(--red);box-shadow:0 0 0 4px rgba(255,69,58,.16)}
+.tl .st.cur.bad .o:after{background:var(--red)}
+.prog{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:12.5px;color:var(--dim)}
+.bar{flex:1;height:6px;border-radius:99px;background:var(--card2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green2),var(--green))}
+.rlog{margin-top:12px;font-size:12px;color:var(--mute);display:flex;gap:8px;align-items:center}
+.rlog .err{color:var(--red)}
+.empty{text-align:center;padding:34px 10px;color:var(--mute)}
+.empty .ei{width:44px;height:44px;margin:0 auto 12px;border-radius:14px;background:var(--card2);border:1px solid var(--line2);display:grid;place-items:center;color:var(--dim)}
+.empty b{display:block;color:var(--dim);font-weight:600;margin-bottom:4px}
+
+/* tabs + tables */
+.tabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:99px;padding:3px}
+.tabs button{all:unset;cursor:pointer;height:28px;padding:0 14px;border-radius:99px;font-size:12.5px;color:var(--dim)}
+.tabs button.on{background:var(--card2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--line2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--mute);font-weight:500;text-align:left;padding:0 12px 10px;font-size:12px;border-bottom:1px solid var(--line)}
+td{padding:13px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right;white-space:nowrap}
+.logs{max-height:320px;overflow:auto;font:12px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dim)}
+.logs div{display:flex;gap:12px;padding:3px 0;border-bottom:1px dashed rgba(255,255,255,.04)}
+.logs div time{color:var(--mute);flex:none}
+.logs .warn{color:var(--amber)}.logs .error{color:var(--red)}
+
+/* setup */
+.setup{border-color:rgba(59,143,240,.35);background:linear-gradient(160deg,rgba(27,118,220,.10),var(--card) 45%)}
+.steps{display:grid;gap:10px}
+.step{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--bg2)}
+.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;font-weight:700;flex:none;background:var(--card2);color:var(--mute);border:1px solid var(--line2)}
+.step.done{opacity:.7}
+.step.done .n{background:var(--green2);border-color:var(--green2);color:#fff}
+.step.cur{border-color:rgba(59,143,240,.5);background:rgba(27,118,220,.07)}
+.step.cur .n{background:var(--blue);border-color:var(--blue);color:#fff}
+.step b{display:block;font-size:14px;font-weight:600}.step p{color:var(--dim);font-size:12.5px;margin-top:3px}
+.step .act{margin-top:10px}
+.pair{margin-top:10px;max-height:130px;overflow:auto;background:#0a0a0b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:12px/1.6 ui-monospace,Consolas,monospace;color:var(--dim);white-space:pre-wrap}
+
+.note{display:flex;gap:10px;padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.6;margin-top:14px}
+.note.warn{background:rgba(255,179,64,.07);border:1px solid rgba(255,179,64,.28);color:#ffd99a}
+
+/* tg */
+details.tgd{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+details.tgd summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim)}
+details.tgd summary::-webkit-details-marker{display:none}
+details.tgd[open] summary .chev{transform:rotate(90deg)}
+.chev{transition:transform .15s}
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal.on{display:flex}
+.modal .card{max-width:460px;width:100%;padding:24px;background:var(--card2);border-color:var(--line2);box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h3{font-size:17px;font-weight:600;margin-bottom:8px}
+.modal p{color:var(--dim);font-size:13.5px;line-height:1.65}
+.modal .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.terms{max-height:240px;overflow:auto;background:#0a0a0b;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;color:var(--dim);white-space:pre-wrap;margin:12px 0}
+.toggle{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--dim);cursor:pointer;margin-top:10px}
+.toggle input{margin-top:3px;accent-color:var(--blue)}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:var(--card2);border:1px solid var(--line2);border-radius:14px;padding:12px 18px;font-size:13.5px;box-shadow:0 18px 40px rgba(0,0,0,.5);transition:.25s;z-index:30;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{border-color:rgba(255,69,58,.5);color:#ffb3ad}
+footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);color:var(--mute);font-size:12px;line-height:1.9}
+footer b{color:var(--dim);font-weight:500}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-vault" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="12" cy="12" r="3.2"/><path d="M12 8.8V7M12 17v-1.8M15.2 12H17M7 12h1.8"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v3"/><path d="M3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M21 12h-4a2 2 0 0 0 0 4h4z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+</svg>
+
+<nav><div class="nav">
+  <div class="brand"><div class="mark"><svg viewBox="8 8 240 240"><rect x="8" y="8" width="240" height="240" rx="56" fill="#0e0f10"/><path d="M167.9 92.5 A62 62 0 1 1 88.1 92.5" fill="none" stroke="#2fc45f" stroke-width="30" stroke-linecap="round"/><circle cx="128" cy="70" r="22" fill="#2fc45f"/></svg></div>AutoDeposit<small>TermiX 量化 · 币安 AI 钱包</small></div>
+  <div class="sp"></div>
+  <div class="chip"><span class="dot" id="dot"></span><span id="pillTxt">连接中…</span></div>
+  <div class="chip addr"><span class="bnbmark"><i></i></span><b class="num" id="kAddr">—</b></div>
+  <select id="lang" class="langsel" title="Language" onchange="setLang(this.value)"><option value="zh">简体中文</option><option value="en">English</option><option value="ko">한국어</option><option value="vi">Tiếng Việt</option><option value="ja">日本語</option></select>
+  <div class="menu"><button class="ib" id="bMenu" title="更多"><svg class="i"><use href="#i-more"/></svg></button>
+    <div class="dd" id="dd">
+      <button id="bRefresh"><svg class="i"><use href="#i-refresh"/></svg><span>重新检查<small>重新读取钱包与设置状态</small></span></button>
+      <button id="bRestart"><svg class="i"><use href="#i-repeat"/></svg><span>重新启动工具<small>不影响进行中的存款</small></span></button>
+      <button id="bReport"><svg class="i"><use href="#i-send"/></svg><span>回报问题<small>把错误纪录送给作者（不含钥匙与私人资料）</small></span></button>
+      <hr>
+      <button id="bQuit" class="danger"><svg class="i"><use href="#i-power"/></svg><span>关闭工具<small>停止开新单；点桌面图标可再打开</small></span></button>
+    </div>
+  </div>
+</div></nav>
+
+<div class="wrap">
+  <div class="eyebrow">Quant · BNB Smart Chain</div>
+  <h1>让币安 AI 钱包自动跑量化策略</h1>
+  <div class="lead">每 6 小时自动存入、到期自动收回本金到你的币安钱包。设置好金额即可自动运行。</div>
+  <div class="tags">
+    <span class="tg"><svg class="i"><use href="#i-shield"/></svg>本金只回你的币安钱包</span>
+    <span class="tg"><svg class="i"><use href="#i-clock"/></svg>6 小时一轮</span>
+    <span class="tg"><svg class="i"><use href="#i-star"/></svg>每 1U 跑满一轮 = 100 TP</span>
+  </div>
+
+  <div id="setup" class="card setup" style="display:none;margin-top:24px">
+    <div class="ch"><h2>首次设置</h2><span class="sub">只要做一次，约 3 分钟</span></div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div class="appwait" id="appWait">
+    <h2><svg class="i"><use href="#i-alert"/></svg><span id="awTitle">请在币安 App 确认一笔交易</span></h2>
+    <ol>
+      <li data-h="aw1">打开手机 <b>币安 App</b> → <b>钱包</b> → 进入 <b>Agentic Wallet</b> 管理页</li>
+      <li>在「待确认」或通知列表找到这笔交易：<b id="awWhat"></b></li>
+      <li id="awCheck"></li>
+      <li>按完不用回来操作，工具会自动继续。<span id="awLeft"></span></li>
+    </ol>
+    <div class="hint" style="margin-top:10px">找不到这笔交易？可能你在 App 设成「高风险交易自动拒绝」：到 Agentic Wallet 管理页右上角设定，改成「需要确认」，工具会自动重送。</div>
+  </div>
+  <div class="note warn" id="pickNote" style="display:none;margin-top:24px;font-size:13.5px"></div>
+  <div class="grid" id="main">
+    <div class="card stat c3"><div class="lb"><span class="ico"><svg class="i"><use href="#i-wallet"/></svg></span>钱包余额</div><div class="v num" id="kUsdc">—<small>USDC</small></div><div class="s num" id="kBnb">— BNB</div></div>
+    <div class="card stat c3"><div class="lb"><span class="ico"><svg class="i"><use href="#i-layers"/></svg></span>运行中本金</div><div class="v num" id="kLive">0<small>USDC</small></div><div class="s" id="kLiveSub">0 笔进行中</div></div>
+    <div class="card stat c3"><div class="lb"><span class="ico"><svg class="i"><use href="#i-repeat"/></svg></span>已完成轮数</div><div class="v num" id="kRounds">0</div><div class="s" id="kRef">退费 0 笔</div></div>
+    <div class="card stat tp c3"><div class="lb"><span class="ico"><svg class="i"><use href="#i-star"/></svg></span>我的积分</div><div class="v num" id="kTp">0<small>TP</small></div><div class="s" id="kTpSub">按官方现行规则估算，以 TermiX 为准</div></div>
+
+    <div class="card c8">
+      <div class="hero">
+        <div class="runline">
+          <div class="state" id="stTitle">尚未开始<small id="stSub">设置好金额后按「开始自动存款」</small></div>
+          <div class="sp"></div>
+          <button class="btn go" id="bStart"><svg class="i"><use href="#i-play"/></svg>开始自动存款</button>
+          <button class="btn go" id="bStop" style="display:none;background:var(--card2);border-color:var(--line2)"><svg class="i"><use href="#i-pause"/></svg>停止开新单</button>
+        </div>
+        <div class="field">
+          <label>怎么选策略</label>
+          <div class="seg" id="segMode"><button data-m="auto">自动挑选（推荐）</button><button data-m="plan">自己选策略、期限、金额</button></div>
+        </div>
+        <div id="planBox" class="plan" style="display:none">
+          <div id="planRows" class="plan"></div>
+          <div class="row" style="justify-content:space-between;align-items:center;gap:10px">
+            <button class="btn sm" id="bAddRow">＋ 添加策略</button>
+            <div class="psum" id="planSum"></div>
+          </div>
+          <div class="hint">期限越长积分越少：每 1U 跑完「一单」= 100 TP，不论 6 小时还是 1 天。想要积分最多就选 6 小时。币安开发者模式一次最长约 7 天，所以只开放 6 小时与 1 天的期限。</div>
+        </div>
+        <div class="grid" style="margin-top:0;gap:16px">
+          <div class="field c6" id="fMax">
+            <label>每轮存入金额 <span>10 – 1000 USDC</span></label>
+            <div class="inp"><input type="number" id="sMax" min="10" max="1000" step="1"><em>USDC</em></div>
+            <div class="seg" id="segMax"><button data-v="10">10</button><button data-v="100">100</button><button data-v="300">300</button><button data-v="500">500</button><button data-v="1000">1000</button></div>
+          </div>
+          <div class="field c6" id="fRounds">
+            <label><span id="sRoundsK" style="color:inherit">跑几轮后停止</span> <span id="sRoundsInfo">最多 150 轮</span></label>
+            <div class="inp"><input type="number" id="sRounds" min="0" max="150" step="1"><em>轮</em></div>
+            <div class="seg" id="segRounds"><button data-v="0">一直跑</button><button data-v="3">3 轮（约 1 天）</button><button data-v="24">24 轮（约 7 天）</button></div>
+          </div>
+        </div>
+        <div class="est">
+          <div><div class="k">预估每轮积分</div><div class="v y num" id="eRound">—<small>TP</small></div></div>
+          <div><div class="k" id="eDayK">预估一天（约 3.5 轮）</div><div class="v y num" id="eDay">—<small>TP</small></div></div>
+          <div><div class="k">每轮固定成本</div><div class="v num">≈ 0.002<small>BNB</small></div></div>
+        </div>
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div class="hint" id="saveHint" style="flex:1 1 360px">积分按官方现行规则预估（每 1U 跑满一轮 = 100 TP），实际受策略剩余空位与钱包余额限制。成本每轮固定，存得越多越划算。</div>
+          <button class="btn pri sm" id="bSave">保存设置</button>
+        </div>
+        <details class="tgd"><summary><svg class="i chev"><use href="#i-chev"/></svg><svg class="i"><use href="#i-send"/></svg>Telegram 通知（可选，用你自己的机器人）</summary>
+        <div class="row" style="margin-top:14px">
+          <div class="field" style="flex:2;min-width:220px"><label>Bot Token</label><div class="inp"><input type="text" id="sTg" autocomplete="off" style="font-size:13px;font-weight:500"></div></div>
+          <div class="field" style="flex:1;min-width:140px"><label>Chat ID</label><div class="inp"><input type="text" id="sChat" style="font-size:13px;font-weight:500"></div></div>
+          <button class="btn sm" id="bTg" style="height:44px">保存</button><button class="btn sm ghost" id="bTgTest" style="height:44px">发测试消息</button>
+        </div>
+      </details>
+        <div class="row" style="border-top:1px solid var(--line);padding-top:16px;justify-content:space-between;align-items:center">
+          <div class="hint" data-h="stopHint">「停止」只是不再开新单，进行中的单会跑完、自动收回。<br>「全部收回」会马上中止，进行中的单拿不到积分。<br><span style="color:var(--amber)">Venus 有智能合约风险，请只放你能承担的金额。</span></div>
+          <button class="btn red sm" id="bRecall"><svg class="i"><use href="#i-undo"/></svg>全部收回</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card c4">
+      <div class="ch"><svg class="i" style="color:var(--green)"><use href="#i-shield"/></svg><h2>状态与安全</h2></div>
+      <div class="chk" id="health"></div>
+      <div class="shield" data-h="shield"><b>策略方拿不到你的本金。</b>只授权最小权限：Venus 类只能存入／赎回 Venus，持有类没有任何操作权限；不能转账、借款或换币。到期后工具会先撤销授权，再把本金收回你的币安钱包。</div>
+      <div class="inv" id="invBox" style="display:none">
+        <div class="ch" style="margin:18px 0 10px"><svg class="i" style="color:var(--gold)"><use href="#i-star"/></svg><h2>邀请人</h2><span class="sub">一次性，绑定后不能更改</span></div>
+        <div id="invDone" class="hint"></div>
+        <div id="invForm" class="row" style="flex-wrap:nowrap"><div class="inp" style="flex:1;min-width:0;height:38px"><input type="text" id="invCode" maxlength="12" style="font-size:14px;text-transform:uppercase;min-width:0;width:100%"></div><button class="btn pri sm" id="bInv" style="height:38px;flex:none;white-space:nowrap">绑定</button></div>
+        <div class="hint" id="invMine" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="card c12">
+      <div class="ch"><svg class="i" style="color:var(--dim)"><use href="#i-chart"/></svg><h2>进行中</h2><span class="sub" id="slotCount"></span></div>
+      <div id="tSlots"></div>
+    </div>
+
+    <div class="card c12">
+      <div class="ch"><div class="tabs" id="tabs"><button class="on" data-t="hist">历史记录</button><button data-t="logs">运行日志</button></div><span class="sub" id="tabSub"></span></div>
+      <div id="pHist"><table><thead><tr><th>时间</th><th>策略</th><th class="r">金额</th><th class="r">结果</th></tr></thead><tbody id="tHist"></tbody></table></div>
+      <div id="pLogs" style="display:none"><div class="logs" id="logs"></div></div>
+    </div>
+  </div>
+
+  <footer>
+    <span data-h="foot"><b>安全说明</b> · 只从 Nancy（@nancy_c813）的官方 GitHub 下载本工具。本金放在工具为你产生的任务钱包，收回目的地固定是你自己的币安钱包。Venus 本身有智能合约风险，请只放你能承担的金额。</span><br>
+    <span id="bk"></span><br><span id="ver"></span>
+  </footer>
+</div>
+
+<div class="modal" id="mRecall"><div class="card">
+  <h3>确认全部收回？</h3>
+  <p data-h="recall">会马上取消所有进行中的单，把本金转回你的币安钱包。还没跑满 6 小时的单<b style="color:var(--red)">拿不到积分</b>，已付的少量手续费可能不退。</p>
+  <div class="acts"><button class="btn" data-close>取消</button><button class="btn red" id="bRecallGo">确认全部收回</button></div>
+</div></div>
+
+<div class="modal" id="mReport"><div class="card">
+  <h3>回报问题给作者</h3>
+  <p class="sub">会送出下面这些内容（钱包地址只留前后几码；不含钥匙、登录凭证或你的电脑用户名）。</p>
+  <textarea id="repNote" maxlength="500" rows="3" placeholder="简单说明遇到什么问题（选填）" style="width:100%;margin-top:10px;background:#0a0a0b;border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--txt);font:inherit;font-size:13px;resize:vertical"></textarea>
+  <div class="terms" id="repPrev"></div>
+  <div class="acts"><button class="btn" data-close>取消</button><button class="btn pri" id="bReportGo">送出回报</button></div>
+</div></div>
+
+<div class="modal" id="mQuit"><div class="card">
+  <h3>关闭工具？</h3>
+  <p>关闭后不会再开新单，进行中的存款也要等你再打开工具才会继续收回。要再开启，点桌面上的「TermiX AutoDeposit」。</p>
+  <div class="acts"><button class="btn" data-close>取消</button><button class="btn red" id="bQuitGo">关闭工具</button></div>
+</div></div>
+
+<div class="modal" id="mTerms"><div class="card">
+  <h3>TermiX 使用条款</h3>
+  <div class="terms" id="termsTxt"></div>
+  <p class="sub">完整条款：<span id="termsUrl" class="num"></span>（请在浏览器自行打开阅读）</p>
+  <label class="toggle"><input type="checkbox" id="termsChk"><span>我已阅读并同意 TermiX 使用条款（这是你本人的同意，工具不会替你同意）</span></label>
+  <div class="acts"><button class="btn" data-close>取消</button><button class="btn pri" id="bTermsGo">同意</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+const LANGS=['zh','en','ko','vi','ja'];
+let LANG=(()=>{try{const v=localStorage.getItem('ad_lang');if(LANGS.includes(v))return v}catch(e){}const n=(navigator.language||'').toLowerCase();return n.startsWith('ko')?'ko':n.startsWith('vi')?'vi':n.startsWith('ja')?'ja':n.startsWith('zh')?'zh':'en'})();
+const I18N={"轮": ["rounds", "회", "vòng", "回"], "时间": ["Time", "시간", "Thời gian", "時間"], "取消": ["Cancel", "취소", "Hủy", "キャンセル"], "金额": ["Amount", "금액", "Số tiền", "金額"], "绑定": ["Bind", "등록", "Liên kết", "登録"], "同意": ["Agree", "동의", "Đồng ý", "同意する"], "策略": ["Strategy", "전략", "Chiến lược", "戦略"], "保存": ["Save", "저장", "Lưu", "保存"], "确认": ["Confirm", "확인", "Xác nhận", "確認"], "存入": ["Deposit", "입금", "Gửi vào", "入金"], "，按": [", tap", "을(를) 누르세요:", ", nhấn", "、"], "重试": ["Retry", "재시도", "Thử lại", "再試行"], "结果": ["Result", "결과", "Kết quả", "結果"], "钱包": ["Wallet", "지갑", "Ví", "ウォレット"], "更多": ["More", "더보기", "Thêm", "その他"], "邀请人": ["Inviter", "초대인", "Người mời", "招待者"], "进行中": ["In progress", "진행 중", "Đang chạy", "進行中"], "一直跑": ["Run forever", "계속 실행", "Chạy liên tục", "ずっと実行"], "管理页": ["management page", "관리 페이지", "trang quản lý", "管理ページ"], "已就绪": ["Ready", "준비됨", "Sẵn sàng", "準備完了"], "待设置": ["Setup needed", "설정 필요", "Cần cài đặt", "要設定"], "运行中": ["Running", "운용 중", "Đang chạy", "実行中"], "未开启": ["Off", "꺼짐", "Chưa bật", "オフ"], "已开启": ["On", "켜짐", "Đã bật", "オン"], "→ 进入": ["→ open", "→ 이동", "→ vào", "→ 開く"], "历史记录": ["History", "기록", "Lịch sử", "履歴"], "重新检查": ["Re-check", "다시 확인", "Kiểm tra lại", "再確認"], "连接钱包": ["Connect wallet", "지갑 연결", "Kết nối ví", "ウォレット接続"], "配对中…": ["Pairing…", "페어링 중…", "Đang ghép nối…", "ペアリング中…"], "我的积分": ["My points", "내 포인트", "Điểm của tôi", "マイポイント"], "运行日志": ["Activity log", "실행 로그", "Nhật ký", "実行ログ"], "有单暂停": ["Paused", "일시정지", "Tạm dừng", "一時停止中"], "保存设置": ["Save settings", "설정 저장", "Lưu cài đặt", "設定を保存"], "保存设置 •": ["Save settings •", "설정 저장 •", "Lưu cài đặt •", "設定を保存 •"], "收回本金": ["Return funds", "원금 회수", "Rút vốn về", "元本を回収"], "首次设置": ["First-time setup", "처음 설정", "Cài đặt lần đầu", "初回設定"], "钱包余额": ["Wallet balance", "지갑 잔액", "Số dư ví", "ウォレット残高"], "结算积分": ["Settle points", "포인트 정산", "Chốt điểm", "ポイント確定"], "安全说明": ["Safety", "안전 안내", "An toàn", "安全について"], "全部收回": ["Recall all", "전부 회수", "Rút toàn bộ", "すべて回収"], "关闭工具": ["Quit tool", "도구 종료", "Thoát công cụ", "ツールを終了"], "打开手机": ["Open the", "휴대폰에서", "Mở", "スマホで"], "还没有记录": ["No records yet", "아직 기록 없음", "Chưa có bản ghi", "まだ記録がありません"], "关闭工具？": ["Quit the tool?", "도구를 종료할까요?", "Thoát công cụ?", "ツールを終了しますか？"], "运行中本金": ["Funds in use", "운용 중 원금", "Vốn đang chạy", "運用中の元本"], "发测试消息": ["Send test", "테스트 전송", "Gửi thử", "テスト送信"], "阅读并同意": ["Read & agree", "읽고 동의", "Đọc và đồng ý", "読んで同意"], "开发者模式": ["Developer Mode", "개발자 모드", "Chế độ nhà phát triển", "開発者モード"], "已完成轮数": ["Rounds done", "완료한 회차", "Số vòng xong", "完了した回数"], "状态与安全": ["Status & safety", "상태 및 안전", "Trạng thái & an toàn", "状態と安全"], "完整条款：": ["Full terms: ", "전체 약관: ", "Điều khoản đầy đủ: ", "規約全文："], "停止开新单": ["Stop new rounds", "새 회차 중지", "Dừng mở vòng mới", "新規停止"], "拿不到积分": ["will earn no points", "포인트를 받지 못합니다", "không nhận được điểm", "ポイントは付きません"], "策略方接单": ["Provider accepts", "전략 제공자 수락", "Bên chiến lược nhận", "戦略側が受注"], "每轮固定成本": ["Fixed cost / round", "회차당 고정 비용", "Chi phí cố định / vòng", "1回あたりの固定コスト"], "新建代理身份": ["Create agent", "에이전트 생성", "Tạo agent", "エージェント作成"], "跑几轮后停止": ["Stop after rounds", "몇 회 후 중지", "Dừng sau số vòng", "何回で停止"], "币安 App": ["Binance App", "바이낸스 앱", "ứng dụng Binance", "Binance アプリ"], "重新启动工具": ["Restart tool", "도구 재시작", "Khởi động lại", "ツールを再起動"], "确认全部收回": ["Recall all now", "전부 회수 확인", "Xác nhận rút toàn bộ", "すべて回収する"], "确认全部收回？": ["Recall everything?", "전부 회수할까요?", "Rút toàn bộ?", "すべて回収しますか？"], "6 小时一轮": ["6h per round", "회차당 6시간", "6 giờ mỗi vòng", "1回 6時間"], "启用代理身份": ["Activate agent", "에이전트 활성화", "Kích hoạt agent", "エージェントを有効化"], "每轮存入金额": ["Amount per round", "회차당 입금액", "Số tiền mỗi vòng", "1回の入金額"], "开始自动存款": ["Start auto-deposit", "자동 입금 시작", "Bắt đầu tự động gửi", "自動入金を開始"], "预估每轮积分": ["Est. points / round", "회차당 예상 포인트", "Điểm ước tính / vòng", "1回の予想ポイント"], "两份备份一致": ["Both backups match", "두 백업 일치", "Hai bản sao khớp", "2つのバックアップが一致"], "运行 6 小时": ["Run 6 hours", "6시간 운용", "Chạy 6 giờ", "6時間運用"], "每轮 6 小时": ["6h per round", "회차당 6시간", "6 giờ mỗi vòng", "1回 6時間"], "自动存款运行中": ["Auto-deposit running", "자동 입금 실행 중", "Đang tự động gửi", "自動入金 実行中"], "手续费授权额度": ["Fee allowance", "수수료 승인 한도", "Hạn mức phí đã duyệt", "手数料の承認額"], "BNB 手续费": ["BNB for gas", "가스용 BNB", "BNB phí gas", "ガス用 BNB"], "请先完成首次设置": ["Finish first-time setup", "먼저 처음 설정을 완료하세요", "Hãy hoàn tất cài đặt lần đầu", "先に初回設定を完了してください"], "最多 150 轮": ["max 150", "최대 150회", "tối đa 150", "最大 150 回"], "已就绪，尚未开始": ["Ready, not started", "준비됨, 아직 시작 안 함", "Sẵn sàng, chưa bắt đầu", "準備完了・未開始"], "尚未开始": ["Not started", "시작 전", "Chưa bắt đầu", "未開始"], "开启「开发者模式」": ["Turn on Developer Mode", "「개발자 모드」 켜기", "Bật Chế độ nhà phát triển", "「開発者モード」をオン"], "任务钱包密钥已备份": ["Task-wallet key backed up", "작업 지갑 키 백업됨", "Đã sao lưu khóa ví tác vụ", "タスクウォレットの鍵をバックアップ済み"], "登录 TermiX": ["Sign in to TermiX", "TermiX 로그인", "Đăng nhập TermiX", "TermiX にログイン"], "不影响进行中的存款": ["Running deposits unaffected", "진행 중인 입금에 영향 없음", "Không ảnh hưởng lệnh đang chạy", "進行中の入金には影響しません"], "有单暂停，需要处理": ["A round is paused — action needed", "일시정지된 회차가 있습니다", "Có vòng tạm dừng, cần xử lý", "一時停止中の回があります（対応が必要）"], "目前没有进行中的存款": ["No active deposits", "진행 중인 입금 없음", "Không có lệnh đang chạy", "進行中の入金はありません"], "本金只回你的币安钱包": ["Funds only return to your wallet", "원금은 내 지갑으로만 회수", "Vốn chỉ về ví của bạn", "元本は自分のウォレットにだけ戻る"], "完成上方步骤后即可开始": ["Complete the steps above to start", "위 단계를 마치면 시작할 수 있습니다", "Hoàn tất các bước trên để bắt đầu", "上の手順を完了すると開始できます"], "策略方拿不到你的本金。": ["The provider can't take your funds. ", "전략 제공자는 원금을 가져갈 수 없습니다. ", "Bên chiến lược không lấy được vốn của bạn. ", "戦略側はあなたの元本を取れません。"], "重新读取钱包与设置状态": ["Reload wallet and settings", "지갑·설정 상태 다시 읽기", "Tải lại ví và cài đặt", "ウォレットと設定を再読み込み"], "一次性，绑定后不能更改": ["One-time, can't be changed", "1회만, 변경 불가", "Một lần, không đổi được", "1回限り・登録後は変更不可"], "TermiX 使用条款": ["TermiX Terms of Use", "TermiX 이용약관", "Điều khoản TermiX", "TermiX 利用規約"], "必须由你本人阅读并同意。": ["You must read and agree yourself.", "본인이 직접 읽고 동의해야 합니다.", "Bạn phải tự đọc và đồng ý.", "ご本人が読んで同意する必要があります。"], "连接你的币安 AI 钱包": ["Connect your Binance AI wallet", "바이낸스 AI 지갑 연결", "Kết nối ví AI Binance", "Binance AI ウォレットを接続"], "只要做一次，约 3 分钟": ["Only once, about 3 minutes", "한 번만, 약 3분", "Chỉ một lần, khoảng 3 phút", "1回だけ・約3分"], "安装币安 AI 钱包组件": ["Install Binance AI wallet component", "바이낸스 AI 지갑 구성요소 설치", "Cài thành phần ví AI Binance", "Binance AI ウォレットのコンポーネントをインストール"], "（请在浏览器自行打开阅读）": [" (open it in your browser to read)", " (브라우저에서 열어 읽어 주세요)", " (mở bằng trình duyệt để đọc)", "（ブラウザで開いてお読みください）"], "同意 TermiX 使用条款": ["Agree to TermiX Terms", "TermiX 약관 동의", "Đồng ý điều khoản TermiX", "TermiX 利用規約に同意"], "，已付的少量手续费可能不退。": [", and the small fee paid may not be refunded.", ", 이미 낸 소액 수수료는 환불되지 않을 수 있습니다.", ", phí nhỏ đã trả có thể không được hoàn.", "、支払った少額の手数料は返金されない場合があります。"], "设置好金额后按「开始自动存款」": ["Set the amount, then tap Start", "금액 설정 후 「자동 입금 시작」을 누르세요", "Đặt số tiền rồi nhấn Bắt đầu", "金額を設定して「自動入金を開始」を押してください"], "停止开新单；点桌面图标可再打开": ["Stops new rounds; reopen from desktop icon", "새 회차 중지, 바탕화면 아이콘으로 다시 열기", "Dừng vòng mới; mở lại từ biểu tượng", "新規を停止。デスクトップアイコンで再起動できます"], "请在币安 App 确认一笔交易": ["Confirm a transaction in the Binance App", "바이낸스 앱에서 거래를 확인하세요", "Hãy xác nhận giao dịch trong ứng dụng Binance", "Binance アプリで取引を承認してください"], "让币安 AI 钱包自动跑量化策略": ["Let your Binance AI wallet run quant strategies automatically", "바이낸스 AI 지갑으로 퀀트 전략 자동 실행", "Để ví AI Binance tự chạy chiến lược quant", "Binance AI ウォレットでクオンツ戦略を自動運用"], "按「开始自动存款」后会显示在这里": ["Shows here after you tap Start", "「자동 입금 시작」 후 여기에 표시됩니다", "Sẽ hiện ở đây sau khi nhấn Bắt đầu", "「自動入金を開始」を押すとここに表示されます"], "工具会在有空位时自动开下一轮": ["The next round opens when a slot frees up", "빈자리가 생기면 다음 회차를 자동으로 엽니다", "Vòng sau sẽ tự mở khi có chỗ trống", "空きが出ると次の回を自動で開始します"], "每轮到期自动收回，再自动开下一轮": ["Each round returns funds, then the next starts", "회차 만료 시 회수 후 다음 회차 자동 시작", "Mỗi vòng tự rút về rồi mở vòng sau", "毎回満了時に自動回収し、次の回を自動開始"], "看下方「进行中」的提示，按「重试」": ["See the note under In progress and tap Retry", "아래 「진행 중」 안내를 보고 「재시도」를 누르세요", "Xem ghi chú ở Đang chạy và nhấn Thử lại", "下の「進行中」の案内を見て「再試行」を押してください"], "按完不用回来操作，工具会自动继续。": ["No need to come back — the tool continues by itself.", "누른 뒤 돌아올 필요 없이 자동으로 계속됩니다.", "Không cần quay lại, công cụ tự tiếp tục.", "押したら戻る必要はありません。ツールが自動で続けます。"], "每 1U 跑满一轮 = 100 TP": ["1U per full round = 100 TP", "1U 1회 완주 = 100 TP", "1U mỗi vòng đủ = 100 TP", "1U で1回完走 = 100 TP"], "充足（每轮约用 0.002 BNB）": ["Enough (about 0.002 BNB per round)", "충분 (회차당 약 0.002 BNB)", "Đủ (khoảng 0.002 BNB mỗi vòng)", "十分（1回約 0.002 BNB）"], "第一轮时会请你在 App 确认一次": ["You'll confirm once in the App on the first round", "첫 회차에 앱에서 한 번 확인합니다", "Vòng đầu sẽ cần xác nhận một lần trong App", "初回にアプリで一度承認します"], "在「待确认」或通知列表找到这笔交易：": ["Find this transaction under Pending or Notifications: ", "「대기 중」 또는 알림 목록에서 이 거래를 찾으세요: ", "Tìm giao dịch này trong mục Chờ xác nhận hoặc Thông báo: ", "「承認待ち」または通知一覧でこの取引を探す："], "TermiX 量化 · 币安 AI 钱包": ["TermiX Quant · Binance AI Wallet", "TermiX 퀀트 · 바이낸스 AI 지갑", "TermiX Quant · Ví AI Binance", "TermiX クオンツ · Binance AI ウォレット"], "核对对象地址是 TermiX 官方托管合约": ["Check the address is TermiX's official escrow ", "주소가 TermiX 공식 에스크로인지 확인 ", "Kiểm tra địa chỉ là hợp đồng ký quỹ chính thức của TermiX ", "相手アドレスが TermiX 公式エスクローか確認 "], "TermiX 官方积分（每 5 分钟更新）": ["Official TermiX points (updates every 5 min)", "TermiX 공식 포인트 (5분마다 갱신)", "Điểm chính thức TermiX (cập nhật mỗi 5 phút)", "TermiX 公式ポイント（5分ごとに更新）"], "按官方现行规则估算，以 TermiX 为准": ["Estimated by current rules; TermiX is final", "현행 규칙 기준 추정, TermiX 기준이 우선", "Ước tính theo quy tắc hiện hành; TermiX là chuẩn", "現行ルールでの見積り。正式には TermiX の表示に従います"], "「全部收回」会马上中止，进行中的单拿不到积分。": ["Recall all stops at once; active rounds earn no points.", "「전부 회수」는 즉시 중단하며 진행 중 회차는 포인트가 없습니다.", "Rút toàn bộ sẽ dừng ngay; vòng đang chạy không có điểm.", "「すべて回収」は即時中止し、進行中の回はポイントが付きません。"], "Telegram 通知（可选，用你自己的机器人）": ["Telegram alerts (optional, your own bot)", "텔레그램 알림 (선택, 본인 봇)", "Thông báo Telegram (tùy chọn, bot của bạn)", "Telegram 通知（任意・自分のボット）"], "Venus 有智能合约风险，请只放你能承担的金额。": ["Venus has smart-contract risk; only use what you can afford.", "Venus는 스마트 컨트랙트 위험이 있으니 감당 가능한 금액만 넣으세요.", "Venus có rủi ro hợp đồng thông minh; chỉ gửi số tiền bạn chấp nhận được.", "Venus にはスマートコントラクトのリスクがあります。失っても困らない額だけにしてください。"], "「停止」只是不再开新单，进行中的单会跑完、自动收回。": ["Stop only halts new rounds; active ones finish and return.", "「중지」는 새 회차만 막고 진행 중 회차는 끝까지 실행 후 회수됩니다.", "Dừng chỉ ngừng mở vòng mới; vòng đang chạy vẫn xong và rút về.", "「停止」は新規を止めるだけで、進行中の回は最後まで運用され自動回収されます。"], "自动完成。若一直没有完成，请确认开发者模式没过期，再按「重新检查」。": ["Automatic. If it doesn't finish, check Developer Mode hasn't expired, then tap Re-check.", "자동으로 완료됩니다. 계속 안 되면 개발자 모드 만료 여부를 확인하고 「다시 확인」을 누르세요.", "Tự động. Nếu chưa xong, kiểm tra Chế độ nhà phát triển chưa hết hạn rồi nhấn Kiểm tra lại.", "自動で完了します。終わらない場合は開発者モードの期限を確認し「再確認」を押してください。"], "启动时会自动安装。若仍显示未安装，请在右上角「⋯」选「重新启动工具」。": ["Installed automatically at launch. If still missing, choose Restart tool from ⋯ at top right.", "시작 시 자동 설치됩니다. 계속 미설치로 보이면 오른쪽 위 「⋯」에서 「도구 재시작」을 선택하세요.", "Tự cài khi khởi động. Nếu vẫn thiếu, chọn Khởi động lại ở ⋯ góc trên phải.", "起動時に自動インストールされます。未インストールのままなら右上「⋯」から「ツールを再起動」。"], "按下后会打开配对页面，用币安 App 扫描 QR 码、核对配对码并确认。": ["Opens a pairing page: scan the QR with the Binance App, check the code, confirm.", "페어링 페이지가 열리면 바이낸스 앱으로 QR을 스캔하고 코드를 확인한 뒤 승인하세요.", "Mở trang ghép nối: quét QR bằng ứng dụng Binance, đối chiếu mã rồi xác nhận.", "ペアリング画面が開きます。Binance アプリで QR を読み取り、コードを確認して承認してください。"], "会马上取消所有进行中的单，把本金转回你的币安钱包。还没跑满 6 小时的单": ["Cancels all active rounds now and returns funds to your Binance wallet. Rounds under 6 hours ", "진행 중인 모든 회차를 즉시 취소하고 원금을 바이낸스 지갑으로 돌려보냅니다. 6시간을 채우지 못한 회차는 ", "Hủy ngay mọi vòng đang chạy và chuyển vốn về ví Binance. Vòng chưa đủ 6 giờ ", "進行中の回をすべて取り消し、元本を Binance ウォレットに戻します。6時間に満たない回は"], "USDC 授权 1 USDC 给托管合约，只能用来付 TermiX 手续费": ["Allow 1 USDC to the escrow contract, only for TermiX fees", "에스크로 계약에 1 USDC 승인 (TermiX 수수료 전용)", "Cho phép 1 USDC cho hợp đồng ký quỹ, chỉ để trả phí TermiX", "エスクロー契約に 1 USDC を承認（TermiX 手数料の支払い専用）"], "付这一轮的手续费给托管合约（金额很小）": ["Pay this round's small fee to the escrow contract", "이번 회차 소액 수수료를 에스크로에 지불", "Trả phí nhỏ của vòng này cho hợp đồng ký quỹ", "この回の少額手数料をエスクローに支払う"], "转 USDC 和少量 BNB 到你的任务钱包": ["Send USDC and a little BNB to your task wallet", "USDC와 소량 BNB를 작업 지갑으로 전송", "Chuyển USDC và ít BNB vào ví tác vụ", "USDC と少量の BNB をタスクウォレットへ送金"], "我已阅读并同意 TermiX 使用条款（这是你本人的同意，工具不会替你同意）": ["I have read and agree to the TermiX Terms (your own consent; the tool never agrees for you)", "TermiX 이용약관을 읽고 동의합니다 (본인 동의이며 도구가 대신 동의하지 않습니다)", "Tôi đã đọc và đồng ý điều khoản TermiX (do chính bạn đồng ý, công cụ không thay bạn)", "TermiX 利用規約を読み、同意します（ご本人の同意です。ツールが代わりに同意することはありません）"], "每 6 小时自动存入、到期自动收回本金到你的币安钱包。设置好金额即可自动运行。": ["Deposits every 6 hours and returns funds to your Binance wallet when each round ends. Set an amount and it runs by itself.", "6시간마다 자동 입금하고 만료 시 원금을 바이낸스 지갑으로 회수합니다. 금액만 설정하면 자동으로 실행됩니다.", "Gửi tự động mỗi 6 giờ và rút vốn về ví Binance khi hết vòng. Đặt số tiền là tự chạy.", "6時間ごとに自動入金し、満了時に元本を Binance ウォレットへ自動回収。金額を設定するだけで自動運用します。"], "币安 App → Agentic Wallet 设置 → 开发者模式。开好后按「重新检查」。": ["Binance App → Agentic Wallet settings → Developer Mode. Then tap Re-check.", "바이낸스 앱 → Agentic Wallet 설정 → 개발자 모드. 켠 뒤 「다시 확인」을 누르세요.", "Ứng dụng Binance → cài đặt Agentic Wallet → Chế độ nhà phát triển. Bật xong nhấn Kiểm tra lại.", "Binance アプリ → Agentic Wallet 設定 → 開発者モード。オンにしたら「再確認」を押してください。"], "关闭后不会再开新单，进行中的存款也要等你再打开工具才会继续收回。要再开启，点桌面上的「TermiX AutoDeposit」。": ["After quitting, no new rounds open, and active deposits resume returning only when you reopen the tool. Reopen from the TermiX AutoDeposit desktop icon.", "종료하면 새 회차가 열리지 않으며, 진행 중 입금은 도구를 다시 열어야 회수가 이어집니다. 바탕화면의 「TermiX AutoDeposit」으로 다시 여세요.", "Sau khi thoát sẽ không mở vòng mới; lệnh đang chạy chỉ tiếp tục rút về khi bạn mở lại công cụ. Mở lại từ biểu tượng TermiX AutoDeposit.", "終了すると新規は開始されず、進行中の入金もツールを再度開くまで回収されません。デスクトップの「TermiX AutoDeposit」から再起動できます。"], "积分按官方现行规则预估（每 1U 跑满一轮 = 100 TP），实际受策略剩余空位与钱包余额限制。成本每轮固定，存得越多越划算。": ["Points estimated by current rules (1U per full round = 100 TP); actual amount depends on strategy space and your balance. Cost per round is fixed, so larger deposits are more efficient.", "포인트는 현행 규칙 기준 추정치입니다 (1U 1회 = 100 TP). 실제는 전략 잔여 한도와 잔액에 따라 다릅니다. 회차당 비용이 고정이라 많이 넣을수록 유리합니다.", "Điểm ước tính theo quy tắc hiện hành (1U mỗi vòng = 100 TP); thực tế tùy chỗ trống của chiến lược và số dư. Chi phí mỗi vòng cố định nên gửi càng nhiều càng lợi.", "ポイントは現行ルールでの見積り（1U で1回完走 = 100 TP）。実際は戦略の空き枠と残高で変わります。コストは1回ごとに固定なので、多く入れるほどお得です。"], "找不到这笔交易？可能你在 App 设成「高风险交易自动拒绝」：到 Agentic Wallet 管理页右上角设定，改成「需要确认」，工具会自动重送。": ["Can't find it? Your App may auto-reject high-risk transactions: in the Agentic Wallet page settings (top right), change it to require confirmation and the tool will resend.", "거래가 안 보이나요? 앱에서 「고위험 거래 자동 거부」로 설정했을 수 있습니다. Agentic Wallet 관리 페이지 오른쪽 위 설정에서 「확인 필요」로 바꾸면 도구가 다시 보냅니다.", "Không thấy giao dịch? Có thể App đang tự từ chối giao dịch rủi ro cao: vào cài đặt trang Agentic Wallet (góc trên phải), đổi sang cần xác nhận, công cụ sẽ gửi lại.", "取引が見つからない？アプリで高リスク取引を自動拒否にしている可能性があります。Agentic Wallet 管理ページ右上の設定で「承認が必要」に変えると、ツールが再送します。"], "只授权最小权限：Venus 类只能存入／赎回 Venus，持有类没有任何操作权限；不能转账、借款或换币。到期后工具会先撤销授权，再把本金收回你的币安钱包。": ["Only minimal permissions: Venus strategies can only supply/redeem on Venus; hold strategies get none. No transfers, borrowing or swaps. At the end the tool revokes access first, then returns funds to your Binance wallet.", "최소 권한만 부여합니다: Venus 전략은 Venus 예치/상환만, 보유 전략은 권한 없음. 이체·대출·스왑 불가. 만료 시 먼저 권한을 철회한 뒤 원금을 바이낸스 지갑으로 회수합니다.", "Chỉ cấp quyền tối thiểu: chiến lược Venus chỉ gửi/rút trên Venus; chiến lược giữ không có quyền nào. Không chuyển, vay hay đổi coin. Khi hết hạn, công cụ thu hồi quyền trước rồi rút vốn về ví Binance.", "最小限の権限だけ：Venus 型は Venus への預入／償還のみ、保有型は権限なし。送金・借入・スワップは不可。満了時はまず権限を取り消し、元本を Binance ウォレットへ回収します。"], "没有检测到币安 Agent ID，需要新建一个代理身份（只花约 0.0002 BNB 手续费）。已经有 Agent ID 的话，先确认它绑在这个币安钱包上，再按「重新检查」。": ["No Binance Agent ID found; create an agent (about 0.0002 BNB). If you have one, make sure it's linked to this wallet, then tap Re-check.", "바이낸스 Agent ID가 없습니다. 에이전트를 새로 만드세요 (약 0.0002 BNB). 이미 있다면 이 지갑에 연결됐는지 확인 후 「다시 확인」을 누르세요.", "Không thấy Binance Agent ID; hãy tạo agent (khoảng 0.0002 BNB). Nếu đã có, kiểm tra nó gắn với ví này rồi nhấn Kiểm tra lại.", "Binance Agent ID が見つかりません。エージェントを作成してください（約 0.0002 BNB）。お持ちの場合はこのウォレットに紐付いているか確認し「再確認」を押してください。"], "· 只从 Nancy（@nancy_c813）的官方 GitHub 下载本工具。本金放在工具为你产生的任务钱包，收回目的地固定是你自己的币安钱包。Venus 本身有智能合约风险，请只放你能承担的金额。": [" · Only download from Nancy's (@nancy_c813) official GitHub. Funds sit in a task wallet the tool creates for you and always return to your own Binance wallet. Venus has smart-contract risk; only use what you can afford.", " · Nancy(@nancy_c813)의 공식 GitHub에서만 받으세요. 원금은 도구가 만든 작업 지갑에 있으며 항상 본인 바이낸스 지갑으로 회수됩니다. Venus는 스마트 컨트랙트 위험이 있으니 감당 가능한 금액만 넣으세요.", " · Chỉ tải từ GitHub chính thức của Nancy (@nancy_c813). Vốn nằm trong ví tác vụ do công cụ tạo và luôn rút về ví Binance của bạn. Venus có rủi ro hợp đồng thông minh; chỉ gửi số tiền bạn chấp nhận được.", " · このツールは Nancy（@nancy_c813）の公式 GitHub からのみダウンロードしてください。元本はツールが作るタスクウォレットに置かれ、回収先は常にご自身の Binance ウォレットです。Venus にはスマートコントラクトのリスクがあります。"], "授权手续费额度（只需一次）": ["Approve the fee allowance (once only)", "수수료 한도 승인 (한 번만)", "Duyệt hạn mức phí (chỉ một lần)", "手数料の承認（初回のみ）"], "确认付手续费": ["Confirm fee payment", "수수료 결제 확인", "Xác nhận trả phí", "手数料の支払いを承認"], "确认转入本金": ["Confirm the deposit", "원금 이체 확인", "Xác nhận chuyển vốn", "元本の送金を承認"], "确认交易": ["Confirm transaction", "거래 확인", "Xác nhận giao dịch", "取引を承認"], "已完成": ["Done", "완료", "Xong", "完了"], "工具未运行": ["Tool not running", "도구가 실행 중이 아님", "Công cụ chưa chạy", "ツールが起動していません"], "请从桌面图标打开": ["Open it from the desktop icon", "바탕화면 아이콘으로 여세요", "Hãy mở từ biểu tượng", "デスクトップアイコンから開いてください"], "暂无日志": ["No logs yet", "로그 없음", "Chưa có nhật ký", "ログはまだありません"], "已到期": ["Ended", "만료됨", "Đã hết hạn", "満了"], "请先勾选同意": ["Please tick the agree box first", "먼저 동의에 체크하세요", "Hãy tích ô đồng ý trước", "先に同意にチェックしてください"], "请输入邀请码": ["Enter an invite code", "초대 코드를 입력하세요", "Nhập mã mời", "招待コードを入力してください"], "请打开完整条款阅读。": ["Please open the full terms to read.", "전체 약관을 열어 읽어 주세요.", "Hãy mở điều khoản đầy đủ để đọc.", "規約全文を開いてお読みください。"], "Bot Token 格式不对，没有保存": ["Bot Token format is wrong; not saved", "Bot Token 형식이 잘못되어 저장되지 않았습니다", "Bot Token sai định dạng, chưa lưu", "Bot Token の形式が違うため保存していません"], "Chat ID 格式不对，没有保存": ["Chat ID format is wrong; not saved", "Chat ID 형식이 잘못되어 저장되지 않았습니다", "Chat ID sai định dạng, chưa lưu", "Chat ID の形式が違うため保存していません"], "请先填写并保存 Bot Token 和 Chat ID": ["Fill in and save the Bot Token and Chat ID first", "먼저 Bot Token과 Chat ID를 입력하고 저장하세요", "Hãy nhập và lưu Bot Token và Chat ID trước", "先に Bot Token と Chat ID を入力して保存してください"], "已发出测试消息，请到 Telegram 查看": ["Test sent — check Telegram", "테스트를 보냈습니다. 텔레그램을 확인하세요", "Đã gửi thử, hãy xem Telegram", "テストを送信しました。Telegram をご確認ください"], "有未保存的修改，保存后从下一轮生效": ["Unsaved changes; they apply from the next round", "저장하지 않은 변경 사항이 있습니다. 저장 후 다음 회차부터 적용됩니다", "Có thay đổi chưa lưu; áp dụng từ vòng sau", "未保存の変更があります。保存後、次の回から反映されます"], "只跑一轮，跑完自动收回后停止": ["Run one round, return funds, then stop", "1회만 실행 후 회수하고 중지", "Chạy một vòng, rút về rồi dừng", "1回だけ運用し、回収後に停止"], "邀请码绑定成功": ["Invite code bound", "초대 코드 등록 완료", "Đã liên kết mã mời", "招待コードを登録しました"], "工具正在重新启动，约 15 秒后重新整理页面": ["Restarting — refresh in about 15 seconds", "도구 재시작 중, 약 15초 후 새로고침하세요", "Đang khởi động lại, làm mới sau khoảng 15 giây", "再起動中です。約15秒後に再読み込みしてください"], "已开始收回，几分钟内完成，进度看「进行中」": ["Recall started; done in a few minutes — see In progress", "회수를 시작했습니다. 몇 분 안에 완료되며 「진행 중」에서 확인하세요", "Đã bắt đầu rút, xong trong vài phút — xem Đang chạy", "回収を開始しました。数分で完了します（「進行中」で確認）"], "请在币安 App 按确认，然后按「重新检查」": ["Confirm in the Binance App, then tap Re-check", "바이낸스 앱에서 승인한 뒤 「다시 확인」을 누르세요", "Xác nhận trong ứng dụng Binance rồi nhấn Kiểm tra lại", "Binance アプリで承認し、「再確認」を押してください"], "约 30 秒后完成": ["Done in about 30 seconds", "약 30초 후 완료", "Xong sau khoảng 30 giây", "約30秒で完了"], "还没完成设定": ["Setup not finished", "설정이 완료되지 않았습니다", "Chưa hoàn tất cài đặt", "設定が完了していません"], "量化策略": ["Quant strategy", "퀀트 전략", "Chiến lược quant", "クオンツ戦略"], "（快到期，请到 App 延长）": [" (expiring soon — extend in the App)", " (곧 만료, 앱에서 연장하세요)", " (sắp hết hạn — gia hạn trong App)", "（まもなく期限切れ。アプリで延長してください）"], "分配任务钱包": ["Allocating task wallet", "작업 지갑 할당", "Cấp ví tác vụ", "タスクウォレット割当"], "登记任务钱包": ["Registering task wallet", "작업 지갑 등록", "Đăng ký ví tác vụ", "タスクウォレット登録"], "转入本金": ["Sending funds", "원금 이체", "Chuyển vốn", "元本を送金"], "建立委托单": ["Creating order", "주문 생성", "Tạo lệnh", "注文作成"], "授权策略方": ["Authorizing provider", "전략 제공자 권한 부여", "Cấp quyền bên chiến lược", "戦略側に権限付与"], "开立手续费单": ["Opening fee checkout", "수수료 결제 생성", "Tạo thanh toán phí", "手数料の決済作成"], "支付手续费": ["Paying fee", "수수료 결제", "Trả phí", "手数料支払い"], "追踪手续费订单": ["Tracking fee order", "수수료 주문 확인", "Theo dõi lệnh phí", "手数料注文を追跡"], "等策略方接单": ["Waiting for provider", "전략 제공자 수락 대기", "Chờ bên chiến lược nhận", "戦略側の受注待ち"], "完成": ["Done", "완료", "Xong", "完了"], "已暂停": ["Paused", "일시정지", "Tạm dừng", "一時停止"], "工具已关闭。要再开启，点桌面上的「TermiX AutoDeposit」": ["Tool closed. To reopen, use the TermiX AutoDeposit desktop icon.", "도구가 종료되었습니다. 바탕화면의 「TermiX AutoDeposit」으로 다시 여세요.", "Đã thoát. Mở lại bằng biểu tượng TermiX AutoDeposit.", "ツールを終了しました。デスクトップの「TermiX AutoDeposit」から再起動できます"], "币安钱包可用 USDC 不足 10": ["Less than 10 USDC available in your Binance wallet", "바이낸스 지갑의 사용 가능 USDC가 10 미만입니다", "Ví Binance còn dưới 10 USDC khả dụng", "Binance ウォレットの利用可能 USDC が 10 未満です"], "目前没有已上架且有空位的策略（策略要先通过官方审核），会自动再找": ["No listed strategy has space right now (strategies must pass official review); the tool will keep looking", "현재 여유 한도가 있는 상장 전략이 없습니다 (전략은 공식 심사 통과 필요). 자동으로 계속 찾습니다", "Hiện chưa có chiến lược nào còn chỗ (chiến lược phải qua kiểm duyệt chính thức); công cụ sẽ tự tìm tiếp", "空きのある掲載中の戦略がありません（戦略は公式審査済みのもののみ）。自動で探し続けます"], "钱包地址与纪录不符，已封锁所有动作": ["Wallet address doesn't match records; all actions blocked", "지갑 주소가 기록과 달라 모든 작업을 차단했습니다", "Địa chỉ ví không khớp, đã chặn mọi thao tác", "ウォレットアドレスが記録と一致しないため、すべての操作を停止しました"], "⚠️ 工具放在会自动同步到云端的资料夹，钥匙可能被上传。请把整个工具资料夹移到 C:\\TermiX 之类的位置": ["⚠️ The tool is in a cloud-synced folder, so keys may be uploaded. Move the whole tool folder to somewhere like C:\\TermiX", "⚠️ 도구가 클라우드 동기화 폴더에 있어 키가 업로드될 수 있습니다. 도구 폴더 전체를 C:\\TermiX 같은 위치로 옮기세요", "⚠️ Công cụ nằm trong thư mục đồng bộ đám mây, khóa có thể bị tải lên. Hãy chuyển cả thư mục sang nơi như C:\\TermiX", "⚠️ ツールがクラウド同期フォルダにあり、鍵がアップロードされる恐れがあります。ツールのフォルダごと C:\\TermiX などへ移動してください"], "不能绑定自己的邀请码": ["You can't bind your own invite code", "본인 초대 코드는 등록할 수 없습니다", "Không thể dùng mã mời của chính bạn", "自分の招待コードは登録できません"], "正在处理中，几秒后再按": ["Working on it — try again in a few seconds", "처리 중입니다. 몇 초 후 다시 누르세요", "Đang xử lý, thử lại sau vài giây", "処理中です。数秒後にもう一度押してください"], "请先连接钱包并登录 TermiX": ["Connect your wallet and sign in to TermiX first", "먼저 지갑을 연결하고 TermiX에 로그인하세요", "Hãy kết nối ví và đăng nhập TermiX trước", "先にウォレットを接続し TermiX にログインしてください"], "请先阅读并勾选同意": ["Please read and tick the agree box first", "먼저 읽고 동의에 체크하세요", "Hãy đọc và tích ô đồng ý trước", "先に読んで同意にチェックしてください"], "这个钱包已经绑定过邀请人，不能更改": ["This wallet already has an inviter and can't change it", "이 지갑은 이미 초대인이 등록되어 변경할 수 없습니다", "Ví này đã có người mời, không đổi được", "このウォレットは招待者登録済みのため変更できません"], "通行码错误，请从启动程式开的网址进入": ["Invalid access code; open the tool from its desktop icon", "접근 코드가 올바르지 않습니다. 바탕화면 아이콘으로 여세요", "Mã truy cập sai; hãy mở từ biểu tượng công cụ", "アクセスコードが違います。デスクトップアイコンから開いてください"], "邀请码格式不对": ["Invalid invite code format", "초대 코드 형식이 올바르지 않습니다", "Mã mời sai định dạng", "招待コードの形式が違います"], "需要确认": ["Confirmation required", "확인이 필요합니다", "Cần xác nhận", "確認が必要です"], "代理登记交易内容异常，已拒绝": ["Agent registration transaction looked wrong; refused", "에이전트 등록 거래 내용이 이상하여 거부했습니다", "Giao dịch đăng ký agent bất thường, đã từ chối", "エージェント登録の取引内容が不正なため拒否しました"], "代理登记合约不是官方地址，已拒绝": ["Agent registration contract isn't the official address; refused", "에이전트 등록 계약이 공식 주소가 아니어서 거부했습니다", "Hợp đồng đăng ký agent không phải địa chỉ chính thức, đã từ chối", "エージェント登録の契約が公式アドレスではないため拒否しました"], "3 轮（约 1 天）": ["3 rounds (~1 day)", "3회 (약 1일)", "3 vòng (~1 ngày)", "3回（約1日）"], "24 轮（约 7 天）": ["24 rounds (~7 days)", "24회 (약 7일)", "24 vòng (~7 ngày)", "24回（約7日）"], "预估一天（约 3.5 轮）": ["Est. per day (~3.5 rounds)", "하루 예상 (약 3.5회)", "Ước tính / ngày (~3.5 vòng)", "1日の予想（約3.5回）"], "至少要 0.008 BNB 才会开新单（每轮约用 0.002）": ["Needs at least 0.008 BNB to open a round (about 0.002 per round)", "새 회차를 열려면 최소 0.008 BNB 필요 (회차당 약 0.002)", "Cần ít nhất 0.008 BNB để mở vòng (khoảng 0.002 mỗi vòng)", "新規開始には最低 0.008 BNB が必要（1回約 0.002）"], "核对对象地址是 TermiX 官方托管合约 0x6A52…913C，按「确认」": ["Check the address is TermiX's official escrow contract 0x6A52…913C, then tap Confirm", "주소가 TermiX 공식 에스크로 계약 0x6A52…913C인지 확인하고 「확인」을 누르세요", "Kiểm tra địa chỉ là hợp đồng ký quỹ chính thức của TermiX 0x6A52…913C, rồi nhấn Xác nhận", "相手アドレスが TermiX 公式エスクロー 0x6A52…913C か確認して「承認」を押してください"], "开发者模式 7 小时内会到期，先不开新单：请到币安 App 延长开发者模式": ["Developer Mode expires within 7 hours, so no new rounds: extend it in the Binance App", "개발자 모드가 7시간 안에 만료되어 새 회차를 열지 않습니다: 바이낸스 앱에서 연장하세요", "Chế độ nhà phát triển hết hạn trong 7 giờ nên chưa mở vòng mới: hãy gia hạn trong ứng dụng Binance", "開発者モードが7時間以内に期限切れのため新規を開始しません。Binance アプリで延長してください"], "开发者模式今天的额度剩不到 10U，明天会自动继续（也可到币安 App 调高每日额度）": ["Less than 10U of today's Developer Mode quota left; it continues tomorrow (or raise the daily limit in the Binance App)", "개발자 모드 오늘 한도가 10U 미만입니다. 내일 자동으로 이어집니다 (바이낸스 앱에서 일일 한도 상향 가능)", "Hạn mức hôm nay của Chế độ nhà phát triển còn dưới 10U; mai sẽ tự tiếp tục (hoặc tăng hạn mức trong App)", "開発者モードの本日の残り枠が 10U 未満です。明日自動で再開します（アプリで1日の上限を上げることもできます）"], "Telegram 发送失败（请检查 Bot Token、Chat ID，并先对机器人按 Start）": ["Telegram send failed (check Bot Token and Chat ID, and press Start in your bot first)", "텔레그램 전송 실패 (Bot Token·Chat ID 확인, 먼저 봇에서 Start를 누르세요)", "Gửi Telegram thất bại (kiểm tra Bot Token, Chat ID và bấm Start với bot trước)", "Telegram 送信に失敗（Bot Token・Chat ID を確認し、先にボットで Start を押してください）"], "连不上 Telegram，请检查网络": ["Can't reach Telegram; check your network", "텔레그램에 연결할 수 없습니다. 네트워크를 확인하세요", "Không kết nối được Telegram, hãy kiểm tra mạng", "Telegram に接続できません。ネットワークを確認してください"], "不支持的请求": ["Unsupported request", "지원하지 않는 요청", "Yêu cầu không được hỗ trợ", "未対応のリクエスト"], "找不到这个功能": ["Unknown action", "알 수 없는 기능", "Không tìm thấy chức năng", "不明な操作"], "找不到这一笔": ["Round not found", "해당 회차를 찾을 수 없습니다", "Không tìm thấy vòng này", "該当する回が見つかりません"], "工具正在关闭": ["The tool is closing", "도구를 종료하는 중입니다", "Công cụ đang thoát", "ツールを終了中です"], "任务钱包": ["Task wallet", "작업 지갑", "Ví tác vụ", "タスクウォレット"], "核对收款地址就是下方「进行中」显示的任务钱包，按「确认」。若跳出「异常收款地址／7702 账户」提醒：这是因为任务钱包用 EIP-7702 升级成智能账户来限制策略方权限，币安对这类合约一律提醒，地址对得上就按「继续交易」": ["Check the recipient is the task wallet shown under In progress, then tap Confirm. If an \"abnormal recipient / 7702 account\" warning appears: the task wallet is upgraded to a smart account with EIP-7702 so the provider's permissions can be locked down, and Binance flags all such contracts. If the address matches, tap Continue.", "받는 주소가 아래 「진행 중」에 표시된 작업 지갑인지 확인하고 「확인」을 누르세요. 「비정상 수취 주소 / 7702 계정」 경고가 뜨면: 작업 지갑이 전략 제공자 권한을 제한하기 위해 EIP-7702로 스마트 계정으로 업그레이드되었기 때문이며, 바이낸스는 이런 계약을 모두 경고합니다. 주소가 맞으면 「계속」을 누르세요.", "Kiểm tra địa chỉ nhận là ví tác vụ hiển thị ở mục Đang chạy, rồi nhấn Xác nhận. Nếu hiện cảnh báo \"địa chỉ nhận bất thường / tài khoản 7702\": ví tác vụ được nâng cấp thành tài khoản thông minh bằng EIP-7702 để khóa quyền của bên chiến lược, Binance cảnh báo mọi hợp đồng loại này. Địa chỉ khớp thì nhấn Tiếp tục.", "受取アドレスが下の「進行中」に表示されたタスクウォレットか確認し「承認」を押してください。「異常な受取アドレス／7702 アカウント」の警告が出た場合：戦略側の権限を絞るためタスクウォレットを EIP-7702 でスマートアカウント化しているためで、Binance はこの種の契約を一律で警告します。アドレスが一致すれば「取引を続行」を押してください"], "回报问题": ["Report a problem", "문제 신고", "Báo lỗi", "問題を報告"], "把错误纪录送给作者（不含钥匙与私人资料）": ["Send the error log to the author (no keys or personal data)", "오류 기록을 제작자에게 전송 (키·개인정보 제외)", "Gửi nhật ký lỗi cho tác giả (không gồm khóa hay dữ liệu riêng)", "エラー記録を作者へ送信（鍵や個人情報は含みません）"], "回报问题给作者": ["Report a problem to the author", "제작자에게 문제 신고", "Báo lỗi cho tác giả", "作者に問題を報告"], "会送出下面这些内容（钱包地址只留前后几码；不含钥匙、登录凭证或你的电脑用户名）。": ["The content below will be sent (wallet addresses shortened; no keys, login credentials or your PC user name).", "아래 내용이 전송됩니다 (지갑 주소는 앞뒤 몇 자리만, 키·로그인 정보·PC 사용자 이름 제외).", "Nội dung dưới đây sẽ được gửi (địa chỉ ví chỉ giữ vài ký tự đầu cuối; không gồm khóa, thông tin đăng nhập hay tên người dùng máy).", "以下の内容が送信されます（アドレスは前後数桁のみ。鍵・ログイン情報・PC のユーザー名は含みません）。"], "简单说明遇到什么问题（选填）": ["Briefly describe the problem (optional)", "어떤 문제인지 간단히 적어 주세요 (선택)", "Mô tả ngắn vấn đề (tùy chọn)", "どんな問題か簡単に（任意）"], "送出回报": ["Send report", "신고 보내기", "Gửi báo lỗi", "報告を送信"], "已送出，作者会收到。谢谢回报！": ["Sent — the author will receive it. Thank you!", "전송했습니다. 제작자가 받게 됩니다. 감사합니다!", "Đã gửi, tác giả sẽ nhận được. Cảm ơn bạn!", "送信しました。作者に届きます。ありがとうございます！"], "一小时内最多回报 3 次，请稍后再试": ["Up to 3 reports per hour; please try later", "1시간에 최대 3회까지 신고할 수 있습니다", "Tối đa 3 lần mỗi giờ, hãy thử lại sau", "1時間に最大3回までです。しばらくしてからお試しください"], "回报没有送出，请稍后再试": ["Report not sent; please try later", "신고가 전송되지 않았습니다. 잠시 후 다시 시도하세요", "Chưa gửi được, hãy thử lại sau", "報告を送信できませんでした。しばらくしてからお試しください"], "连不上回报服务器，请检查网络": ["Can't reach the report server; check your network", "신고 서버에 연결할 수 없습니다. 네트워크를 확인하세요", "Không kết nối được máy chủ báo lỗi, hãy kiểm tra mạng", "報告サーバーに接続できません。ネットワークを確認してください"], "回报太频繁，请一小时后再试": ["Too many reports; try again in an hour", "신고가 너무 잦습니다. 1시간 후 다시 시도하세요", "Báo quá nhiều, hãy thử lại sau 1 giờ", "報告が多すぎます。1時間後にお試しください"], "今天的回报已达上限，请明天再试": ["Today's report limit reached; try tomorrow", "오늘 신고 한도에 도달했습니다. 내일 다시 시도하세요", "Đã đạt giới hạn hôm nay, hãy thử lại ngày mai", "本日の報告上限に達しました。明日お試しください"], "回报太多，请稍后再试": ["Too many reports; please try later", "신고가 많습니다. 잠시 후 다시 시도하세요", "Quá nhiều báo lỗi, hãy thử lại sau", "報告が多すぎます。しばらくしてからお試しください"], "这个币安钱包已经由另一份工具在运行，这份不能开始": ["This Binance wallet is already run by another copy; this one can't start", "이 바이낸스 지갑은 이미 다른 도구가 실행 중이라 시작할 수 없습니다", "Ví Binance này đang được bản khác chạy, bản này không thể bắt đầu", "この Binance ウォレットは別のツールが実行中のため開始できません"], "使用者收回": ["Recalled by user", "사용자가 회수", "Người dùng rút về", "ユーザーが回収"], "没有可用策略": ["No strategy available", "사용 가능한 전략 없음", "Không có chiến lược khả dụng", "利用できる戦略なし"], "策略方没接单（取消订单未确认，手续费可能不退）": ["Provider didn't accept (cancel not confirmed; fee may not be refunded)", "전략 제공자 미수락 (취소 미확인, 수수료 환불 안 될 수 있음)", "Bên chiến lược không nhận (chưa xác nhận hủy, phí có thể không hoàn)", "戦略側が受注せず（取消未承認・手数料は返金されない場合あり）"], "策略方没接单（手续费退回）": ["Provider didn't accept (fee refunded)", "전략 제공자 미수락 (수수료 환불)", "Bên chiến lược không nhận (đã hoàn phí)", "戦略側が受注せず（手数料返金）"], "转入本金在币安 App 连续 3 次没确认": ["Deposit not confirmed in the App 3 times", "앱에서 원금 이체를 3번 확인하지 않음", "Chuyển vốn không được xác nhận 3 lần trong App", "元本送金がアプリで3回承認されず"], "长时间离线，没确认到接单": ["Offline too long; acceptance not confirmed", "오래 오프라인이라 수락을 확인하지 못함", "Ngoại tuyến quá lâu, chưa xác nhận được việc nhận lệnh", "長時間オフラインのため受注を確認できず"], "付款后 60 分钟仍未登记，先收回本金": ["Not registered 60 min after payment; funds returned first", "결제 60분 후에도 등록되지 않아 원금 먼저 회수", "60 phút sau khi trả vẫn chưa ghi nhận, rút vốn trước", "支払後60分経っても未登録のため先に元本を回収"], "币安 App 的授权一直没确认（可能被拒绝）": ["Approval never confirmed in the Binance App (maybe rejected)", "바이낸스 앱 승인이 확인되지 않음 (거부되었을 수 있음)", "Chưa xác nhận duyệt trong ứng dụng Binance (có thể bị từ chối)", "Binance アプリで承認されず（拒否された可能性）"], "手续费 2 小时都付不出去": ["Fee couldn't be paid for 2 hours", "2시간 동안 수수료를 낼 수 없음", "Không trả được phí trong 2 giờ", "2時間手数料を支払えず"], "手续费交易内容不符安全规则，已拒绝付款": ["Fee transaction failed safety rules; payment refused", "수수료 거래가 안전 규칙에 맞지 않아 결제 거부", "Giao dịch phí không đạt quy tắc an toàn, đã từ chối", "手数料取引が安全ルールに合わず支払いを拒否"], "授权一直无法完成": ["Authorization kept failing", "권한 부여가 계속 실패", "Cấp quyền liên tục thất bại", "権限付与が完了できず"], "策略内容变了，不再安全": ["Strategy changed and is no longer safe", "전략 내용이 바뀌어 더 이상 안전하지 않음", "Chiến lược đã thay đổi, không còn an toàn", "戦略内容が変わり安全でなくなった"], "策略费率在授权前被调高": ["Strategy fee was raised before authorization", "권한 부여 전에 전략 수수료가 인상됨", "Phí chiến lược bị tăng trước khi cấp quyền", "権限付与前に戦略手数料が引き上げられた"], "订单已取消": ["Order cancelled", "주문 취소됨", "Lệnh đã hủy", "注文はキャンセル済み"], "另一份工具在运行，已取消": ["Another copy is running; cancelled", "다른 도구가 실행 중이라 취소", "Bản khác đang chạy, đã hủy", "別のツールが実行中のためキャンセル"], "另一份工具在运行，已取消并收回": ["Another copy is running; cancelled and returned", "다른 도구가 실행 중이라 취소 후 회수", "Bản khác đang chạy, đã hủy và rút về", "別のツールが実行中のためキャンセルして回収"], "补收遗留资金": ["Recovering leftover funds", "남은 자금 회수", "Thu hồi tiền còn sót", "残った資金を回収"], "结束": ["Ended", "종료", "Kết thúc", "終了"], "种子尚未产生": ["Not created yet (made on the first round)", "아직 생성되지 않음 (첫 회차에 생성)", "Chưa tạo (tạo ở vòng đầu)", "未作成（初回に作成されます）"], "种子档损坏": ["Seed file damaged — contact the author", "시드 파일 손상 — 제작자에게 문의", "Tệp seed bị hỏng — liên hệ tác giả", "シードファイル破損 — 作者に連絡してください"], "CANCEL_UNCONFIRMED": ["Cancel not confirmed", "취소 미확인", "Chưa xác nhận hủy", "取消未承認"], "单轮最多 1000U，已调整为 1000（要存更多就多跑几轮）": ["Max 1000U per round — set to 1000 (run more rounds to deposit more)", "회차당 최대 1000U라 1000으로 조정했습니다 (더 넣으려면 회차를 늘리세요)", "Tối đa 1000U mỗi vòng, đã chỉnh thành 1000 (muốn gửi thêm hãy chạy nhiều vòng)", "1回の上限は 1000U のため 1000 に調整しました（さらに入れたい場合は回数を増やしてください）"], "单轮最少 10U，已调整为 10": ["Min 10U per round — set to 10", "회차당 최소 10U라 10으로 조정했습니다", "Tối thiểu 10U mỗi vòng, đã chỉnh thành 10", "1回の最低は 10U のため 10 に調整しました"], "最多 150 轮，已调整为 150": ["Max 150 rounds — set to 150", "최대 150회라 150으로 조정했습니다", "Tối đa 150 vòng, đã chỉnh thành 150", "最大 150 回のため 150 に調整しました"], "怎么选策略": ["How to pick strategies", "전략 선택 방식", "Cách chọn chiến lược", "戦略の選び方"], "自动挑选（推荐）": ["Auto-pick (recommended)", "자동 선택 (추천)", "Tự chọn (khuyên dùng)", "自動で選ぶ（おすすめ）"], "自己选策略、期限、金额": ["Choose strategies, terms and amounts myself", "전략·기간·금액 직접 선택", "Tự chọn chiến lược, kỳ hạn, số tiền", "戦略・期間・金額を自分で選ぶ"], "＋ 添加策略": ["+ Add strategy", "+ 전략 추가", "+ Thêm chiến lược", "＋ 戦略を追加"], "选择策略": ["Choose a strategy", "전략 선택", "Chọn chiến lược", "戦略を選択"], "删除": ["Remove", "삭제", "Xóa", "削除"], "费率": ["Fee", "수수료율", "Phí", "手数料率"], "剩余空位": ["Space left", "남은 한도", "Chỗ còn lại", "残り枠"], "每单": ["Per job", "건당", "Mỗi lệnh", "1件あたり"], "每天约": ["Per day ≈", "하루 약", "Mỗi ngày ≈", "1日あたり約"], "策略清单载入中，或这个策略已下架": ["Loading strategies, or this strategy was delisted", "전략 목록을 불러오는 중이거나 이 전략이 내려갔습니다", "Đang tải danh sách, hoặc chiến lược này đã gỡ", "戦略リストを読み込み中、またはこの戦略は掲載終了"], "还没有选择策略，按「＋ 添加策略」。": ["No strategy chosen yet — tap “+ Add strategy”.", "아직 선택한 전략이 없습니다. 「+ 전략 추가」를 누르세요.", "Chưa chọn chiến lược nào, nhấn「+ Thêm chiến lược」.", "まだ戦略が選ばれていません。「＋ 戦略を追加」を押してください。"], "最多 12 个策略": ["Up to 12 strategies", "최대 12개 전략", "Tối đa 12 chiến lược", "最大 12 戦略"], "有一项还没选择策略": ["One row has no strategy selected", "전략을 선택하지 않은 항목이 있습니다", "Có một dòng chưa chọn chiến lược", "戦略が未選択の行があります"], "请至少添加一个策略，或改回「自动挑选」": ["Add at least one strategy, or switch back to Auto-pick", "전략을 하나 이상 추가하거나 「자동 선택」으로 돌아가세요", "Hãy thêm ít nhất một chiến lược, hoặc quay về Tự chọn", "戦略を1つ以上追加するか、「自動で選ぶ」に戻してください"], "USDC 持有（策略方无操作权限）": ["USDC hold (provider has no permissions)", "USDC 보유 (전략 제공자 권한 없음)", "Giữ USDC (bên chiến lược không có quyền)", "USDC 保有（戦略側の権限なし）"], "Venus USDC 存款（只能存取 Venus）": ["Venus USDC supply (Venus only)", "Venus USDC 예치 (Venus만 가능)", "Gửi USDC vào Venus (chỉ Venus)", "Venus USDC 預入（Venus のみ）"], "存款计划格式不对": ["Invalid deposit plan", "입금 계획 형식 오류", "Kế hoạch gửi không hợp lệ", "入金プランの形式が不正です"], "暂时读不到策略清单，请稍后再保存": ["Can't load strategies right now; save again later", "지금 전략 목록을 불러올 수 없습니다. 잠시 후 다시 저장하세요", "Chưa tải được danh sách chiến lược, hãy lưu lại sau", "戦略リストを読み込めません。しばらくしてから保存してください"], "暂时读不到策略清单，请稍后再试": ["Can't load strategies right now; try later", "지금 전략 목록을 불러올 수 없습니다. 잠시 후 다시 시도하세요", "Chưa tải được danh sách chiến lược, hãy thử lại sau", "戦略リストを読み込めません。しばらくしてからお試しください"], "有一个策略已下架或不符合安全条件，请重新选择": ["A strategy was delisted or no longer passes safety checks; choose again", "전략 하나가 내려갔거나 안전 조건에 맞지 않습니다. 다시 선택하세요", "Một chiến lược đã gỡ hoặc không còn an toàn, hãy chọn lại", "掲載終了または安全条件を満たさない戦略があります。選び直してください"], "策略空位已满": ["Strategy is full", "전략 한도 초과", "Chiến lược đã đầy", "戦略の枠が満杯"], "预估一天（全部策略合计）": ["Est. per day (all strategies)", "하루 예상 (전체 전략 합계)", "Ước tính / ngày (tổng các chiến lược)", "1日の予想（全戦略の合計）"], "每个策略各跑几轮后停止": ["Stop each strategy after N rounds", "전략별로 몇 회 후 중지", "Mỗi chiến lược dừng sau số vòng", "各戦略を何回で停止"], "存款计划里有策略已下架或不再提供你选的期限，请到设置里重新选择": ["A strategy in your plan was delisted or no longer offers your term; please choose again in settings", "계획의 전략이 내려갔거나 선택한 기간을 더 이상 제공하지 않습니다. 설정에서 다시 선택하세요", "Một chiến lược trong kế hoạch đã gỡ hoặc không còn kỳ hạn bạn chọn, hãy chọn lại trong cài đặt", "プランの戦略が掲載終了、または選んだ期間を提供しなくなりました。設定で選び直してください"], "暂时读不到策略清单，稍后自动再试": ["Can't load strategies right now; will retry automatically", "지금 전략 목록을 불러올 수 없어 잠시 후 자동으로 다시 시도합니다", "Chưa tải được danh sách chiến lược, sẽ tự thử lại", "戦略リストを読み込めません。自動で再試行します"], "期限越长积分越少：每 1U 跑完「一单」= 100 TP，不论 6 小时还是 1 天。想要积分最多就选 6 小时。币安开发者模式一次最长约 7 天，所以只开放 6 小时与 1 天的期限。": ["Longer terms earn fewer points: each 1U earns 100 TP per completed job, whether 6 hours or 1 day. Pick 6 hours for the most points. Binance Developer Mode lasts about 7 days at most, so only 6-hour and 1-day terms are offered.", "기간이 길수록 포인트가 적습니다: 6시간이든 1일이든 1U가 「한 건」을 마치면 100 TP입니다. 포인트를 최대로 받으려면 6시간을 고르세요. 바이낸스 개발자 모드는 한 번에 최대 약 7일이라 6시간과 1일 기간만 제공합니다.", "Kỳ hạn càng dài điểm càng ít: mỗi 1U chạy xong「một lệnh」= 100 TP, dù 6 giờ hay 1 ngày. Muốn nhiều điểm nhất hãy chọn 6 giờ. Chế độ nhà phát triển của Binance tối đa khoảng 7 ngày mỗi lần, nên chỉ có kỳ hạn 6 giờ và 1 ngày.", "期間が長いほどポイントは少なくなります：1U が「1件」完了するごとに 100 TP（6時間でも1日でも同じ）。ポイント最大なら 6時間を選んでください。Binance の開発者モードは1回最長約7日のため、6時間と1日の期間のみ提供しています。"]};
+const I18H={"aw1": ["Open the <b>Binance App</b> on your phone → <b>Wallet</b> → open the <b>Agentic Wallet</b> management page", "휴대폰에서 <b>바이낸스 앱</b> → <b>지갑</b> → <b>Agentic Wallet</b> 관리 페이지로 이동", "Mở <b>ứng dụng Binance</b> trên điện thoại → <b>Ví</b> → vào trang quản lý <b>Agentic Wallet</b>", "スマホで <b>Binance アプリ</b> → <b>ウォレット</b> → <b>Agentic Wallet</b> 管理ページを開く"], "aw3": ["Check the address is TermiX's official escrow contract <b>0x6A52…913C</b>, then tap <b>Confirm</b>", "주소가 TermiX 공식 에스크로 계약 <b>0x6A52…913C</b>인지 확인하고 <b>확인</b>을 누르세요", "Kiểm tra địa chỉ là hợp đồng ký quỹ chính thức của TermiX <b>0x6A52…913C</b>, rồi nhấn <b>Xác nhận</b>", "相手アドレスが TermiX 公式エスクロー契約 <b>0x6A52…913C</b> か確認し、<b>承認</b>を押す"], "stopHint": ["<b>Stop</b> only halts new rounds; active ones finish and return funds automatically.<br><b>Recall all</b> stops immediately, and active rounds earn no points.<br><span style=\"color:var(--amber)\">Venus has smart-contract risk; only use what you can afford.</span>", "「중지」는 새 회차만 막고, 진행 중 회차는 끝까지 실행된 뒤 자동 회수됩니다.<br>「전부 회수」는 즉시 중단하며, 진행 중 회차는 포인트를 받지 못합니다.<br><span style=\"color:var(--amber)\">Venus는 스마트 컨트랙트 위험이 있으니 감당 가능한 금액만 넣으세요.</span>", "<b>Dừng</b> chỉ ngừng mở vòng mới; vòng đang chạy vẫn chạy xong và tự rút về.<br><b>Rút toàn bộ</b> dừng ngay, vòng đang chạy sẽ không có điểm.<br><span style=\"color:var(--amber)\">Venus có rủi ro hợp đồng thông minh; chỉ gửi số tiền bạn chấp nhận được.</span>", "<b>停止</b>は新規を止めるだけで、進行中の回は最後まで運用され自動回収されます。<br><b>すべて回収</b>は即時中止し、進行中の回はポイントが付きません。<br><span style=\"color:var(--amber)\">Venus にはスマートコントラクトのリスクがあります。失っても困らない額だけにしてください。</span>"], "shield": ["<b>The strategy provider can't take your funds.</b> Only minimal permissions are granted: Venus strategies can only supply/redeem on Venus; hold strategies get no permissions at all. No transfers, borrowing or swaps. When a round ends, the tool revokes access first, then returns your funds to your Binance wallet.", "<b>전략 제공자는 원금을 가져갈 수 없습니다.</b> 최소 권한만 부여합니다: Venus 전략은 Venus 예치/상환만 가능하고, 보유 전략은 권한이 전혀 없습니다. 이체·대출·스왑은 불가합니다. 만료 시 도구가 먼저 권한을 철회한 뒤 원금을 바이낸스 지갑으로 회수합니다.", "<b>Bên chiến lược không lấy được vốn của bạn.</b> Chỉ cấp quyền tối thiểu: chiến lược Venus chỉ gửi/rút trên Venus; chiến lược giữ không có quyền nào. Không chuyển, vay hay đổi coin. Khi hết vòng, công cụ thu hồi quyền trước rồi rút vốn về ví Binance của bạn.", "<b>戦略側はあなたの元本を取れません。</b>最小限の権限だけを付与します：Venus 型は Venus への預入／償還のみ、保有型は権限なし。送金・借入・スワップは不可。満了時はまず権限を取り消し、元本を Binance ウォレットへ回収します。"], "foot": ["<b>Safety</b> · Only download this tool from Nancy's (@nancy_c813) official GitHub. Funds sit in a task wallet the tool creates for you, and always return to your own Binance wallet. Venus itself has smart-contract risk; only use what you can afford.", "<b>안전 안내</b> · 이 도구는 Nancy(@nancy_c813)의 공식 GitHub에서만 받으세요. 원금은 도구가 만든 작업 지갑에 있으며, 회수 목적지는 항상 본인 바이낸스 지갑입니다. Venus 자체에 스마트 컨트랙트 위험이 있으니 감당 가능한 금액만 넣으세요.", "<b>An toàn</b> · Chỉ tải công cụ này từ GitHub chính thức của Nancy (@nancy_c813). Vốn nằm trong ví tác vụ do công cụ tạo cho bạn và luôn rút về ví Binance của chính bạn. Bản thân Venus có rủi ro hợp đồng thông minh; chỉ gửi số tiền bạn chấp nhận được.", "<b>安全について</b> · このツールは Nancy（@nancy_c813）の公式 GitHub からのみダウンロードしてください。元本はツールが作るタスクウォレットに置かれ、回収先は常にご自身の Binance ウォレットです。Venus 自体にスマートコントラクトのリスクがあります。失っても困らない額だけにしてください。"], "recall": ["This cancels all active rounds now and returns funds to your Binance wallet. Rounds that haven't run the full 6 hours <b style=\"color:var(--red)\">earn no points</b>, and the small fees already paid may not be refunded.", "진행 중인 모든 회차를 즉시 취소하고 원금을 바이낸스 지갑으로 돌려보냅니다. 6시간을 채우지 못한 회차는 <b style=\"color:var(--red)\">포인트를 받지 못하며</b>, 이미 낸 소액 수수료는 환불되지 않을 수 있습니다.", "Hủy ngay mọi vòng đang chạy và chuyển vốn về ví Binance của bạn. Vòng chưa chạy đủ 6 giờ <b style=\"color:var(--red)\">không nhận được điểm</b>, và phí nhỏ đã trả có thể không được hoàn.", "進行中の回をすべて取り消し、元本を Binance ウォレットに戻します。6時間に満たない回は<b style=\"color:var(--red)\">ポイントが付かず</b>、支払った少額の手数料は返金されない場合があります。"]};
+const tr1=s=>{const v=I18N[s];return v?v[LANGS.indexOf(LANG)-1]:null};
+const I18P=[
+ [/^(\d+) 笔进行中$/,m=>[m[1]+' active',m[1]+'건 진행 중',m[1]+' lệnh đang chạy',m[1]+' 件 進行中']],
+ [/^(\d+) 笔$/,m=>[m[1],m[1]+'건',m[1],m[1]+' 件']],
+ [/^退费 (\d+) 笔$/,m=>['Refunded: '+m[1],'환불 '+m[1]+'건','Hoàn phí: '+m[1],'返金 '+m[1]+' 件']],
+ [/^(\d+) 小时 (\d+) 分$/,m=>[m[1]+'h '+m[2]+'m left',m[1]+'시간 '+m[2]+'분 남음','còn '+m[1]+' giờ '+m[2]+' phút','残り '+m[1]+'時間'+m[2]+'分']],
+ [/^到期 ([\d/ :]+)(.*)$/,m=>{const x=m[2]?(trS(m[2])):'';return ['Ends '+m[1]+x,'만료 '+m[1]+x,'Hết hạn '+m[1]+x,'満了 '+m[1]+x]}],
+ [/^预计 \+(.+) TP$/,m=>['Est. +'+m[1]+' TP','예상 +'+m[1]+' TP','Dự kiến +'+m[1]+' TP','予想 +'+m[1]+' TP']],
+ [/^(.+) BNB 手续费$/,m=>[m[1]+' BNB for gas','가스용 '+m[1]+' BNB',m[1]+' BNB phí gas','ガス用 '+m[1]+' BNB']],
+ [/^已绑定邀请人 (.*)$/,m=>['Inviter bound: '+m[1],'초대인 등록됨: '+m[1],'Đã liên kết người mời: '+m[1],'招待者 登録済み：'+m[1]]],
+ [/^你自己的邀请链接：(.*)$/,m=>['Your own invite link: '+m[1],'내 초대 링크: '+m[1],'Link mời của bạn: '+m[1],'あなたの招待リンク：'+m[1]]],
+ [/^检测到你的币安 Agent ID：(.+?)，正在自动启用（不收手续费）。几秒后没完成请按「重新检查」。$/,m=>['Found your Binance Agent ID: '+m[1]+'. Activating automatically (no fee). If it isn\'t done in a few seconds, tap Re-check.','바이낸스 Agent ID 감지: '+m[1]+'. 자동 활성화 중입니다 (수수료 없음). 몇 초 후에도 안 되면 「다시 확인」을 누르세요.','Đã thấy Binance Agent ID: '+m[1]+'. Đang tự kích hoạt (miễn phí). Nếu vài giây chưa xong, nhấn Kiểm tra lại.','Binance Agent ID を検出：'+m[1]+'。自動で有効化しています（手数料なし）。数秒で終わらなければ「再確認」を押してください。']],
+ [/^密钥备份位置：(.*)（只要任务钱包还有钱，绝对不要删除）$/,m=>['Key backup location: '+m[1]+' (never delete it while the task wallet holds funds)','키 백업 위치: '+m[1]+' (작업 지갑에 돈이 있는 동안 절대 삭제하지 마세요)','Vị trí sao lưu khóa: '+m[1]+' (không được xóa khi ví tác vụ còn tiền)','鍵のバックアップ場所：'+m[1]+'（タスクウォレットに資金がある間は絶対に削除しないでください）']],
+ [/^若 (\d+) 分钟内没确认，工具会自动重送（最多 3 次）。$/,m=>['If not confirmed within '+m[1]+' min, the tool resends (up to 3 times).',m[1]+'분 안에 확인하지 않으면 도구가 다시 보냅니다 (최대 3회).','Nếu không xác nhận trong '+m[1]+' phút, công cụ sẽ gửi lại (tối đa 3 lần).',m[1]+' 分以内に承認がなければ、ツールが再送します（最大3回）。']],
+ [/^请在币安 App 确认：(.*)$/,m=>{const x=trS(m[1]);return ['Confirm in the Binance App: '+x,'바이낸스 앱에서 확인: '+x,'Xác nhận trong ứng dụng Binance: '+x,'Binance アプリで承認：'+x]}],
+ [/^本次已完成 (\d+) \/ (\d+) 轮，到达后自动停止$/,m=>[m[1]+' / '+m[2]+' rounds done; stops automatically at the limit',m[1]+' / '+m[2]+'회 완료, 도달하면 자동 중지','Đã xong '+m[1]+' / '+m[2]+' vòng, tự dừng khi đủ',m[1]+' / '+m[2]+' 回完了。到達すると自動停止']],
+ [/^本次已完成 (\d+) 轮$/,m=>[m[1]+' rounds done',m[1]+'회 완료','Đã xong '+m[1]+' vòng',m[1]+' 回完了']],
+ [/^钱包连线或 TermiX 登录失效：任务钱包里的 (.+) U 到期仍会自动收回；请到「首次设置」重新连接，才能完成积分结算$/,m=>['Wallet connection or TermiX sign-in lost: the '+m[1]+' U in task wallets will still be returned at expiry; reconnect under First-time setup to settle points','지갑 연결 또는 TermiX 로그인이 끊겼습니다: 작업 지갑의 '+m[1]+' U는 만료 시 자동 회수됩니다. 포인트 정산을 위해 「처음 설정」에서 다시 연결하세요','Mất kết nối ví hoặc đăng nhập TermiX: '+m[1]+' U trong ví tác vụ vẫn tự rút về khi hết hạn; hãy kết nối lại ở Cài đặt lần đầu để chốt điểm','ウォレット接続または TermiX ログインが切れています：タスクウォレットの '+m[1]+' U は満了時に自動回収されます。ポイント確定のため「初回設定」から再接続してください']],
+ [/^绑定失败：(.*)$/,m=>['Bind failed: '+m[1],'등록 실패: '+m[1],'Liên kết thất bại: '+m[1],'登録に失敗：'+m[1]]],
+ [/^这个币安钱包已经由另一份工具在运行（(.*)），这份不会开新单，只把自己进行中的单收完。请只保留一份：关闭其中一份，并删掉多余的桌面图标$/,m=>['This Binance wallet is already run by another copy of the tool ('+m[1]+'); this copy opens no new rounds and only finishes its own. Keep only one: quit one and delete the extra desktop icon.','이 바이낸스 지갑은 이미 다른 도구('+m[1]+')가 실행 중입니다. 이 도구는 새 회차를 열지 않고 진행 중인 회차만 마무리합니다. 하나만 남기고 남는 바탕화면 아이콘을 삭제하세요.','Ví Binance này đang được một bản công cụ khác chạy ('+m[1]+'); bản này không mở vòng mới, chỉ hoàn tất vòng của mình. Chỉ giữ một bản: thoát một bản và xóa biểu tượng thừa.','この Binance ウォレットは別のツール（'+m[1]+'）が実行中です。このツールは新規を開始せず、進行中の回だけを完了します。1つだけ残し、余分なデスクトップアイコンを削除してください。']],
+ [/^币安钱包 BNB 不足，至少要 (.+) BNB 才会开新单$/,m=>['Not enough BNB in your Binance wallet; at least '+m[1]+' BNB is needed to open a round','바이낸스 지갑 BNB 부족: 새 회차에는 최소 '+m[1]+' BNB가 필요합니다','Ví Binance thiếu BNB; cần ít nhất '+m[1]+' BNB để mở vòng','Binance ウォレットの BNB 不足：新規開始には最低 '+m[1]+' BNB が必要です']],
+ [/^「(.+)」一直出错，已取消并收回本金$/,m=>{const x=trS(m[1]);return ['"'+x+'" kept failing; cancelled and funds returned','「'+x+'」 오류가 계속되어 취소 후 원금 회수','"'+x+'" lỗi liên tục, đã hủy và rút vốn','「'+x+'」でエラーが続いたためキャンセルし元本を回収']}],
+ [/^任务钱包价值异常下降（(.+)）$/,m=>['Task wallet value dropped abnormally ('+m[1]+')','작업 지갑 가치 비정상 하락 ('+m[1]+')','Giá trị ví tác vụ giảm bất thường ('+m[1]+')','タスクウォレットの価値が異常に減少（'+m[1]+'）']],
+ [/^手续费异常 (.+)$/,m=>['Abnormal fee '+m[1],'비정상 수수료 '+m[1],'Phí bất thường '+m[1],'手数料が異常 '+m[1]]],
+ [/^订单状态 (.+) 一直没变成已接单$/,m=>['Order status '+m[1]+' never became accepted','주문 상태 '+m[1]+' 가 수락으로 바뀌지 않음','Trạng thái lệnh '+m[1]+' không chuyển sang đã nhận','注文状態 '+m[1]+' が受注済みにならず']],
+ [/^(\d+) 小时$/,m=>[m[1]+' hours',m[1]+'시간',m[1]+' giờ',m[1]+'時間']],
+ [/^(\d+(?:\.\d+)?) 天$/,m=>[m[1]+(m[1]==='1'?' day':' days'),m[1]+'일',m[1]+' ngày',m[1]+'日']],
+ [/^合计 (.+) USDC；钱包需要约 (.+) USDC \+ (.+) BNB(（目前不够，不够的部分会等你补足再存）)?$/,m=>{const k=!!m[4];return ['Total '+m[1]+' USDC; wallet needs about '+m[2]+' USDC + '+m[3]+' BNB'+(k?' (not enough now — the rest waits until you top up)':''),'합계 '+m[1]+' USDC, 지갑에 약 '+m[2]+' USDC + '+m[3]+' BNB 필요'+(k?' (현재 부족, 부족분은 채우면 입금)':''),'Tổng '+m[1]+' USDC; ví cần khoảng '+m[2]+' USDC + '+m[3]+' BNB'+(k?' (hiện chưa đủ, phần thiếu sẽ chờ bạn nạp thêm)':''),'合計 '+m[1]+' USDC。ウォレットに約 '+m[2]+' USDC + '+m[3]+' BNB が必要'+(k?'（現在不足。不足分は補充後に入金）':'')]}],
+ [/^「(.+)」重复了，每个策略只能选一次$/,m=>['"'+m[1]+'" is listed twice; each strategy can be chosen once','「'+m[1]+'」이(가) 중복되었습니다. 전략마다 한 번만 선택할 수 있습니다','"'+m[1]+'" bị trùng, mỗi chiến lược chỉ chọn một lần','「'+m[1]+'」が重複しています。各戦略は1回だけ選べます']],
+ [/^「(.+)」没有这个期限$/,m=>['"'+m[1]+'" doesn\'t offer this term','「'+m[1]+'」에는 이 기간이 없습니다','"'+m[1]+'" không có kỳ hạn này','「'+m[1]+'」にこの期間はありません']],
+ [/^「(.+)」金额要在 (\d+)～1000U 之间$/,m=>['"'+m[1]+'" amount must be '+m[2]+'–1000U','「'+m[1]+'」 금액은 '+m[2]+'～1000U 사이여야 합니다','Số tiền cho "'+m[1]+'" phải từ '+m[2]+'–1000U','「'+m[1]+'」の金額は '+m[2]+'～1000U の範囲で']],
+ [/^「(.+)」已下架或不再符合安全条件，跳过$/,m=>['"'+m[1]+'" was delisted or no longer passes safety checks; skipped','「'+m[1]+'」이(가) 내려갔거나 안전 조건에 맞지 않아 건너뜀','"'+m[1]+'" đã gỡ hoặc không còn an toàn, bỏ qua','「'+m[1]+'」は掲載終了または安全条件外のためスキップ']],
+ [/^「(.+)」不再提供 (.+) 期限，跳过$/,m=>{const x=trS(m[2]);return ['"'+m[1]+'" no longer offers '+x+'; skipped','「'+m[1]+'」에서 '+x+' 기간을 더 이상 제공하지 않아 건너뜀','"'+m[1]+'" không còn kỳ hạn '+x+', bỏ qua','「'+m[1]+'」は '+x+' の期間を提供しなくなったためスキップ']}],
+ [/^「(.+)」刚中途取消过，稍后再试$/,m=>['"'+m[1]+'" was just cancelled mid-way; will retry later','「'+m[1]+'」은(는) 방금 중도 취소되어 나중에 다시 시도','"'+m[1]+'" vừa bị hủy giữa chừng, sẽ thử lại sau','「'+m[1]+'」は途中で取り消されたばかりのため、後で再試行']],
+ [/^「(.+)」空位不足（剩 (\d+)U），有空位会自动存$/,m=>['"'+m[1]+'" lacks space ('+m[2]+'U left); will deposit when space frees up','「'+m[1]+'」 한도 부족 (남은 '+m[2]+'U), 자리가 나면 자동 입금','"'+m[1]+'" thiếu chỗ (còn '+m[2]+'U), có chỗ sẽ tự gửi','「'+m[1]+'」の枠不足（残り '+m[2]+'U）。空きが出たら自動で入金']],
+ [/^币安钱包 USDC 不够存「(.+)」（需要 (\d+)U，可用 (\d+)U）$/,m=>['Not enough USDC for "'+m[1]+'" (need '+m[2]+'U, available '+m[3]+'U)','「'+m[1]+'」에 넣을 USDC 부족 (필요 '+m[2]+'U, 사용 가능 '+m[3]+'U)','Không đủ USDC cho "'+m[1]+'" (cần '+m[2]+'U, có '+m[3]+'U)','「'+m[1]+'」に入れる USDC が不足（必要 '+m[2]+'U、利用可能 '+m[3]+'U）']],
+ [/^这个策略只剩 (\d+)U 空位，已调整为 (\d+)U$/,m=>['This strategy only has '+m[1]+'U of space left; set to '+m[2]+'U','이 전략은 '+m[1]+'U만 남아 '+m[2]+'U로 조정했습니다','Chiến lược này chỉ còn '+m[1]+'U, đã chỉnh thành '+m[2]+'U','この戦略の残り枠は '+m[1]+'U のため '+m[2]+'U に調整しました']],
+ [/^「(.+)」已下架或不再提供你选的期限，跳过$/,m=>['"'+m[1]+'" was delisted or no longer offers your term; skipped','「'+m[1]+'」이(가) 내려갔거나 선택한 기간이 없어 건너뜀','"'+m[1]+'" đã gỡ hoặc không còn kỳ hạn bạn chọn, bỏ qua','「'+m[1]+'」は掲載終了または選んだ期間がないためスキップ']],
+ [/^「(.+)」选了 (.+)，但开发者模式会先到期，请到币安 App 延长后再存$/,m=>{const x=trS(m[2]);return ['"'+m[1]+'" uses a '+x+' term but Developer Mode expires first; extend it in the Binance App','「'+m[1]+'」은(는) '+x+' 기간인데 개발자 모드가 먼저 만료됩니다. 바이낸스 앱에서 연장하세요','"'+m[1]+'" chọn '+x+' nhưng Chế độ nhà phát triển sẽ hết hạn trước, hãy gia hạn trong App','「'+m[1]+'」は '+x+' ですが開発者モードが先に期限切れになります。アプリで延長してください']}],
+ [/^「(.+)」已下架或不符合安全条件，请删掉或重新选择$/,m=>['"'+m[1]+'" was delisted or fails safety checks; remove it or choose again','「'+m[1]+'」이(가) 내려갔거나 안전 조건에 맞지 않습니다. 삭제하거나 다시 선택하세요','"'+m[1]+'" đã gỡ hoặc không an toàn, hãy xóa hoặc chọn lại','「'+m[1]+'」は掲載終了または安全条件外です。削除するか選び直してください']],
+ [/^币安钱包 USDC 不够存「(.+)」（需要 ([\d.]+)U，可用 ([\d.]+)U）$/,m=>['Not enough USDC for "'+m[1]+'" (need '+m[2]+'U, available '+m[3]+'U)','「'+m[1]+'」에 넣을 USDC 부족 (필요 '+m[2]+'U, 사용 가능 '+m[3]+'U)','Không đủ USDC cho "'+m[1]+'" (cần '+m[2]+'U, có '+m[3]+'U)','「'+m[1]+'」に入れる USDC が不足（必要 '+m[2]+'U、利用可能 '+m[3]+'U）']],
+];
+function trS(s){if(LANG==='zh')return s;const t=tr1(s);if(t!=null)return t;for(const [re,f] of I18P){const m=s.match(re);if(m)return f(m)[LANGS.indexOf(LANG)-1]}if(s.includes('；'))return s.split('；').map(trS).join('; ');return s}
+const ATTRS=['title','placeholder'];
+function i18nRun(root){
+  document.querySelectorAll('[data-h]').forEach(el=>{if(el.__zh==null||el.innerHTML!==el.__tr){el.__zh=el.innerHTML}const h=LANG==='zh'?el.__zh:(I18H[el.dataset.h]||[])[LANGS.indexOf(LANG)-1]||el.__zh;if(el.innerHTML!==h)el.innerHTML=h;el.__tr=el.innerHTML});
+  const w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>{const p=n.parentElement;if(!p||p.closest('[data-h],script,style,#logs,.pair,#termsTxt,#lang,#repPrev')||(p.closest('.rlog')&&!p.closest('button')))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});
+  let n;const list=[];while(n=w.nextNode())list.push(n);
+  for(const n of list){let o=(n.__tr!=null&&n.nodeValue===n.__tr)?n.__zh:n.nodeValue;n.__zh=o;const t=o.trim();if(!t){n.__tr=o;continue}const r=trS(t);const v=r===t?o:o.replace(t,r);if(n.nodeValue!==v)n.nodeValue=v;n.__tr=v}
+  document.querySelectorAll('[title],[placeholder]').forEach(el=>ATTRS.forEach(a=>{const v=el.getAttribute(a);if(!v)return;const k='__'+a;let o=(el[k+'t']!=null&&v===el[k+'t'])?el[k]:v;el[k]=o;const r=trS(o);if(v!==r)el.setAttribute(a,r);el[k+'t']=r}));
+  document.documentElement.lang={zh:'zh-CN',en:'en',ko:'ko',vi:'vi',ja:'ja'}[LANG];
+}
+let i18nBusy=false;
+const i18nObs=new MutationObserver(()=>{if(i18nBusy)return;i18nBusy=true;try{i18nRun()}finally{i18nObs.takeRecords();i18nBusy=false}});
+function setLang(l){if(!LANGS.includes(l))return;LANG=l;try{localStorage.setItem('ad_lang',l)}catch(e){}const sel=document.getElementById('lang');if(sel)sel.value=l;i18nBusy=true;try{i18nRun()}finally{i18nObs.takeRecords();i18nBusy=false}}
+
+const T=(location.hash.match(/t=([0-9a-f]{48})/)||[])[1]||sessionStorage.getItem('t')||'';
+if(T){sessionStorage.setItem('t',T);history.replaceState(null,'',location.pathname);}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ic=n=>`<svg class="i"><use href="#i-${n}"/></svg>`;
+async function call(p,b){if(window.__MOCK__)return p==='state'?window.__MOCK__:{ok:true};const o={method:b?'POST':'GET',headers:{'x-anchor-token':T}};if(b){o.headers['content-type']='application/json';o.body=JSON.stringify(b)}const r=await fetch('/api/'+p,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
+let S=null,settingsLoaded=false,toastT=0,MODE='auto',PLAN=[],STRATS=null;
+function toast(m,err){const t=$('toast');t.textContent=m;t.className='on'+(err?' err':'');clearTimeout(toastT);toastT=setTimeout(()=>t.className=err?'err':'',err?6000:3500)}
+const fmt=(n,d=2)=>n==null?'—':Number(n).toLocaleString('en-US',{maximumFractionDigits:d});
+const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'—';
+const tm=t=>t?new Date(t).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
+function left(t){if(!t)return'';const ms=t-Date.now();if(ms<=0)return'已到期';const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4);return h+' 小时 '+m+' 分'}
+const PHASE={allocate:0,register:0,fund:0,create:0,deliver:0,checkout:0,pay:0,feerecover:4,wait_accept:1,active:2,sweep:3,fee:4,done:5};
+const PNAME=['存入','策略方接单','运行 6 小时','收回本金','结算积分'];
+function pillFor(s){const c={active:'run',done:'run',wait_accept:'wait',pay:'wait',fee:'blue',sweep:'blue',feerecover:'blue',paused:'err'}[s.step]||'wait';return `<span class="pill ${c}">${esc(s.stepCn||s.step)}</span>`}
+function slotHtml(s){
+  const paused=s.step==='paused';
+  const ph=Math.min(4,paused?(PHASE[s.pausedFrom]??0):(PHASE[s.step]??0));
+  const tl=PNAME.map((n,i)=>{let c='';if(i<ph||s.step==='done')c='done';else if(i===ph)c=paused?'cur bad':'cur';return `<div class="st ${c}"><div class="o">${c==='done'?ic('check'):''}</div>${n}</div>`}).join('');
+  const pct=s.endsAt&&s.step==='active'?Math.min(100,Math.max(0,100-(s.endsAt-Date.now())/((Number(s.termDays)||0.25)*864e5/100))):(ph>2?100:0);
+  const lg=(s.log||[]).slice(-1)[0]||'';
+  return `<div class="round">
+    <div class="rh"><div class="av">${ic('vault')}</div><div class="nm">${esc(s.strategyName||'量化策略')}<small>${esc(s.label||'')} · <span>${esc(TD_TXT(s.termDays||0.25))}</span>${s.address?` · <span>任务钱包</span> <span class="num" title="${esc(s.address)}">${esc(short(s.address))}</span>`:''}</small></div>${pillFor(s)}
+      <div class="amt"><div class="v num">${fmt(s.alloc,0)}<small>USDC</small></div><div class="s num">预计 +${fmt(Math.floor(s.alloc||0)*100,0)} TP</div></div></div>
+    <div class="tl">${tl}</div>
+    ${s.endsAt?`<div class="prog">${ic('clock')}<span class="num">到期 ${tm(s.endsAt)}</span><div class="bar"><i style="width:${pct}%"></i></div><span class="num">${left(s.endsAt)}</span></div>`:''}
+    <div class="rlog">${s.lastErr?`<span class="err">${esc(s.lastErr)}</span>`:esc(lg)}${s.step==='paused'?`<span class="sp"></span><button class="btn sm" data-retry="${esc(s.id)}">${ic('refresh')}重试</button>`:''}</div>
+  </div>`}
+function render(){
+  if(!S)return;const e=S.env;
+  const pr=S.pairing&&S.pairing.running;
+  const steps=[
+    {ok:e.baw,t:'安装币安 AI 钱包组件',p:'启动时会自动安装。若仍显示未安装，请在右上角「⋯」选「重新启动工具」。'},
+    {ok:e.wallet==='CONNECTED',t:'连接你的币安 AI 钱包',p:'按下后会打开配对页面，用币安 App 扫描 QR 码、核对配对码并确认。',a:`<button class="btn sm pri" onclick="act('connect')">${pr?'配对中…':'连接钱包'}</button>`+(S.pairing&&S.pairing.out?`<div class="pair">${esc(S.pairing.out.split('\n').slice(-6).join('\n'))}</div>`:'')},
+    {ok:!!(e.devMode&&e.devMode.enabled),t:'开启「开发者模式」',p:'币安 App → Agentic Wallet 设置 → 开发者模式。开好后按「重新检查」。',a:'<button class="btn sm" onclick="act(\'refresh\')">重新检查</button>'},
+    {ok:e.login,t:'登录 TermiX',p:'自动完成。若一直没有完成，请确认开发者模式没过期，再按「重新检查」。',a:'<button class="btn sm" onclick="act(\'refresh\')">重新检查</button>'},
+    {ok:e.terms&&e.terms.status==='accepted',t:'同意 TermiX 使用条款',p:'必须由你本人阅读并同意。',a:'<button class="btn sm pri" onclick="openTerms()">阅读并同意</button>'},
+    {ok:e.agent,t:'启用代理身份',p:e.heldAgent?('检测到你的币安 Agent ID：'+esc(e.heldAgent)+'，正在自动启用（不收手续费）。几秒后没完成请按「重新检查」。'):'没有检测到币安 Agent ID，需要新建一个代理身份（只花约 0.0002 BNB 手续费）。已经有 Agent ID 的话，先确认它绑在这个币安钱包上，再按「重新检查」。',a:(e.heldAgent?'':'<button class="btn sm pri" onclick="act(\'create-agent\')">新建代理身份</button> ')+'<button class="btn sm" onclick="act(\'refresh\')">重新检查</button>'},
+  ];
+  const firstBad=steps.findIndex(x=>!x.ok);
+  $('setup').style.display=firstBad<0?'none':'block';
+  $('steps').innerHTML=steps.map((x,i)=>`<div class="step ${x.ok?'done':i===firstBad?'cur':''}"><div class="n">${x.ok?ic('check'):i+1}</div><div><b>${x.t}</b><p>${x.p}</p>${!x.ok&&i===firstBad&&x.a?`<div class="act">${x.a}</div>`:''}</div></div>`).join('');
+  const paused=S.slots.some(s=>s.step==='paused');
+  $('dot').className='dot '+(paused?'err':S.running?'on':S.ready?'warn':'');
+  $('pillTxt').textContent=paused?'有单暂停':S.running?'运行中':S.ready?'已就绪':'待设置';
+  $('stTitle').firstChild.textContent=paused?'有单暂停，需要处理':S.running?'自动存款运行中':S.ready?'已就绪，尚未开始':'请先完成首次设置';
+  $('stSub').textContent=paused?'看下方「进行中」的提示，按「重试」':S.running?(S.settings.maxRounds>0?`本次已完成 ${S.runDone||0} / ${S.settings.maxRounds} 轮，到达后自动停止`:'每轮到期自动收回，再自动开下一轮'):S.ready?'设置好金额后按「开始自动存款」':'完成上方步骤后即可开始';
+  const b=e.balances||{};
+  $('kUsdc').innerHTML=fmt(b.usdc,2)+'<small>USDC</small>';$('kBnb').textContent=fmt(b.bnb,5)+' BNB 手续费';$('kAddr').textContent=short(S.owner);
+  const live=S.slots.filter(s=>!s.principalSwept);$('kLive').innerHTML=fmt(live.reduce((a,s)=>a+Number(s.alloc||0),0),0)+'<small>USDC</small>';$('kLiveSub').textContent=live.length+' 笔进行中';
+  $('kRounds').textContent=fmt(S.stats.rounds,0);$('kRef').textContent=(S.stats.refunded||0)?'退费 '+S.stats.refunded+' 笔':'每轮 6 小时';$('kTp').innerHTML=fmt(S.stats.tpEst,0)+'<small>TP</small>';
+  $('sRoundsInfo').textContent=(S.settings.maxRounds>0)?`本次已完成 ${S.runDone||0} 轮`:'最多 150 轮';
+  $('bStart').style.display=S.running?'none':'';$('bStop').style.display=S.running?'':'none';$('bStart').disabled=!S.ready;$('bRecall').disabled=!S.slots.some(x=>!x.principalSwept);
+  if(!settingsLoaded){$('sMax').value=S.settings.maxPerRoundU;$('sRounds').value=S.settings.maxRounds||0;$('sTg').value=S.settings.tgToken;$('sChat').value=S.settings.tgChatId;settingsLoaded=true;PLAN=(S.settings.plan||[]).map(r=>({...r}));setMode(PLAN.length?'plan':'auto',true);segSync()}
+  const dm=e.devMode;const exp=dm&&dm.expiresAt?Date.parse(dm.expiresAt):0;const days=exp?Math.floor((exp-Date.now())/864e5):null;
+  const H=[
+    [S.seed.ok,'任务钱包密钥已备份',S.seed.ok?'两份备份一致':S.seed.why||''],
+    [!!(dm&&dm.enabled)&&(days==null||days>=1),'开发者模式',dm&&dm.enabled?(exp?'到期 '+tm(exp)+(days<3?'（快到期，请到 App 延长）':''):'已开启'):'未开启'],
+    [(b.bnb||0)>=0.008,'BNB 手续费',(b.bnb||0)>=0.008?'充足（每轮约用 0.002 BNB）':'至少要 0.008 BNB 才会开新单（每轮约用 0.002）'],
+    [(b.allowance||0)>0,'手续费授权额度',(b.allowance||0)>0?fmt(b.allowance,4)+' USDC':'第一轮时会请你在 App 确认一次'],
+  ];
+  $('health').innerHTML=H.map(([ok,t,p])=>`<div class="ck ${ok?'ok':'no'}"><div class="b">${ic(ok?'check':'alert')}</div><div><b>${t}</b><p>${esc(p)}</p></div></div>`).join('');
+  const rw=S.rewards;$('invBox').style.display=rw&&S.env.login?'':'none';
+  if(rw){
+    $('invDone').style.display=rw.inviter?'':'none';$('invForm').style.display=rw.inviter?'none':'flex';
+    $('invDone').textContent=rw.inviter?('已绑定邀请人 '+(rw.inviter.code||rw.inviter.inviteCode||rw.inviter.walletAddress||rw.inviter.address||'')):'';
+    if(!rw.inviter&&!$('invCode').value)$('invCode').value=S.defaultInvite||'';
+    $('invMine').textContent=rw.myCode?('你自己的邀请链接：https://www.agent.family/r/'+rw.myCode):'';
+    $('kTp').innerHTML=fmt(rw.total,0)+'<small>TP</small>';$('kTpSub').textContent='TermiX 官方积分（每 5 分钟更新）';
+  }
+  const aw=S.slots.map(x=>x.appWait).find(Boolean);$('appWait').style.display=aw?'block':'none';
+  if(aw){const W={'fee-approve':['授权手续费额度（只需一次）','USDC 授权 1 USDC 给托管合约，只能用来付 TermiX 手续费'],'fee-pay':['确认付手续费','付这一轮的手续费给托管合约（金额很小）'],'fund':['确认转入本金','转 USDC 和少量 BNB 到你的任务钱包']}[aw.what]||['确认交易',''];$('awTitle').textContent='请在币安 App 确认：'+W[0];$('awWhat').textContent=W[1];$('awCheck').textContent=aw.what==='fund'?'核对收款地址就是下方「进行中」显示的任务钱包，按「确认」。若跳出「异常收款地址／7702 账户」提醒：这是因为任务钱包用 EIP-7702 升级成智能账户来限制策略方权限，币安对这类合约一律提醒，地址对得上就按「继续交易」':'核对对象地址是 TermiX 官方托管合约 0x6A52…913C，按「确认」';const m=Math.max(0,Math.round((aw.until-Date.now())/60000));$('awLeft').textContent=aw.what==='fee-pay'?'':m?('若 '+m+' 分钟内没确认，工具会自动重送（最多 3 次）。'):'';}
+  $('slotCount').textContent=S.slots.length?S.slots.length+' 笔':'';
+  $('tSlots').innerHTML=S.slots.length?S.slots.map(slotHtml).join(''):`<div class="empty"><div class="ei">${ic('layers')}</div><b>目前没有进行中的存款</b>${S.running?'工具会在有空位时自动开下一轮':'按「开始自动存款」后会显示在这里'}</div>`;
+  $('tHist').innerHTML=S.history.length?S.history.slice(0,20).map(h=>`<tr><td class="num">${tm(h.createdAt)}</td><td>${esc(h.strategyName||'—')}</td><td class="r num">${fmt(h.alloc,0)} USDC</td><td class="r">${h.ok?'<span class="pill run num">+'+fmt(Math.floor(h.alloc)*100,0)+' TP</span>':'<span class="pill mute">'+esc(h.cancelReason||h.feeFinal||'结束')+'</span>'}</td></tr>`).join(''):`<tr><td colspan="4"><div class="empty" style="padding:20px">还没有记录</div></td></tr>`;
+  $('logs').innerHTML=S.logs.slice().reverse().map(l=>`<div class="${esc(l.level)}"><time>${esc(new Date(l.t).toLocaleTimeString('zh-CN',{hour12:false}))}</time><span>${esc(l.msg)}</span></div>`).join('')||'<div>暂无日志</div>';
+  $('pickNote').style.display=S.note?'flex':'none';$('pickNote').textContent=S.note||'';
+  $('ver').textContent='AutoDeposit v'+(S.version||'');$('bk').textContent='密钥备份位置：'+S.backupDir+'（只要任务钱包还有钱，绝对不要删除）';
+}
+async function load(){try{S=await call('state');render()}catch(e){$('dot').className='dot err';$('pillTxt').textContent=String(e.message).includes('通行码')?'请从桌面图标打开':'工具未运行'}}
+async function act(p,b){try{const r=await call(p,b||{});if(r.note)toast(r.note);else if(p!=='refresh')toast('已完成');await load()}catch(e){toast(e.message,true)}}
+function retry(id){act('retry',{id})}
+$('tSlots').addEventListener('click',ev=>{const b=ev.target.closest('[data-retry]');if(b)retry(b.dataset.retry)});
+function openTerms(){const t=S.env.terms||{};$('termsTxt').textContent=t.notice||'请打开完整条款阅读。';$('termsUrl').textContent=t.url||'https://www.agent.family/terms#skill';$('termsChk').checked=false;$('mTerms').classList.add('on')}
+const TD_TXT=d=>{d=Number(d);return d<1?Math.round(d*24)+' 小时':d+' 天'};
+const perDay=d=>Number(d)<1?3.5:1/Number(d);
+async function loadStrats(fresh){try{const r=await call('strategies',{fresh:!!fresh});STRATS=r.items||[]}catch(e){STRATS=STRATS||[];toast(e.message,true)}renderPlan()}
+function setMode(m,quiet){MODE=m;$('eDayK').textContent=m==='plan'?'预估一天（全部策略合计）':'预估一天（约 3.5 轮）';$('sRoundsK').textContent=m==='plan'?'每个策略各跑几轮后停止':'跑几轮后停止';$('segRounds').style.display=m==='plan'?'none':'';document.querySelectorAll('#segMode button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));$('planBox').style.display=m==='plan'?'flex':'none';$('fMax').style.display=m==='plan'?'none':'';if(m==='plan'){if(!STRATS)loadStrats().then(()=>{if(!PLAN.length&&!quiet)addRow()});else if(!PLAN.length&&!quiet)addRow()}renderPlan();segSync()}
+function addRow(){if(PLAN.length>=12)return toast('最多 12 个策略',true);const used=new Set(PLAN.map(r=>r.strategyId));const sd=(STRATS||[]).find(x=>!used.has(x.id)&&x.avail>=x.min&&x.terms.includes(0.25))||(STRATS||[]).find(x=>!used.has(x.id));PLAN.push({id:Math.random().toString(36).slice(2,8),strategyId:sd?sd.id:'',name:sd?sd.name:'',termDays:sd?(sd.terms.includes(0.25)?0.25:sd.terms[0]):0.25,amount:sd?Math.max(sd.min,Math.min(100,1000,sd.avail||100)):100});renderPlan();segSync()}
+function renderPlanEst(){const r1=PLAN.reduce((a,r)=>a+Math.floor(r.amount||0)*100,0),d1=PLAN.reduce((a,r)=>a+Math.floor(r.amount||0)*100*perDay(r.termDays),0);$('eRound').innerHTML=fmt(r1,0)+'<small>TP</small>';$('eDay').innerHTML=fmt(d1,0)+'<small>TP</small>'}
+function renderPlan(){if(!$('planRows'))return;const L=STRATS||[];
+  $('planRows').innerHTML=PLAN.map((r,i)=>{const sd=L.find(x=>x.id===r.strategyId);const terms=sd?sd.terms:[r.termDays];
+   const opts=L.map(x=>`<option value="${esc(x.id)}"${x.id===r.strategyId?' selected':''}${PLAN.some((o,j)=>j!==i&&o.strategyId===x.id)?' disabled':''}>${esc(x.name)}</option>`).join('')+(sd||!r.strategyId?'':`<option value="${esc(r.strategyId)}" selected>${esc(r.name||r.strategyId)}</option>`);
+   const tops=terms.map(t=>`<option value="${esc(t)}"${Number(t)===Number(r.termDays)?' selected':''}>${esc(TD_TXT(t))}</option>`).join('');
+   const tp=Math.floor(r.amount||0)*100;
+   return `<div class="prow" data-i="${i}"><select class="ps" data-k="strategyId"><option value="">选择策略</option>${opts}</select><select data-k="termDays">${tops}</select><input type="number" data-k="amount" min="10" max="1000" step="1" value="${esc(r.amount)}"><button class="rm" data-rm="${i}" title="删除">✕</button><div class="meta">${sd?`<span>${esc(sd.kind)}</span><span>费率 <b class="num">${(sd.feeBps/100).toFixed(2)}%</b></span><span>剩余空位 <b class="num">${fmt(sd.avail,0)} U</b></span>`:'<span>策略清单载入中，或这个策略已下架</span>'}<span>每单 <b class="num">${fmt(tp,0)} TP</b></span><span>每天约 <b class="num">${fmt(tp*perDay(r.termDays),0)} TP</b></span></div></div>`}).join('')||'<div class="hint">还没有选择策略，按「＋ 添加策略」。</div>';
+  const fee=PLAN.reduce((a,r)=>{const sd=L.find(x=>x.id===r.strategyId);return a+(Math.floor(r.amount||0)*Math.min((sd?sd.feeBps:300),300)/1e4*Number(r.termDays)/365*1.02+0.001)},0);const tot=PLAN.reduce((a,r)=>a+Math.floor(r.amount||0),0)+fee,b=S&&S.env.balances,usdc=b?Number(b.usdc||0):null,bnbv=b?Number(b.bnb||0):null;
+  const needB=0.004+0.004*PLAN.length;const short=(usdc!=null&&usdc<tot+0.2)||(bnbv!=null&&bnbv<needB);
+  $('planSum').className='psum'+(short?' bad':'');$('planSum').textContent=PLAN.length?(('合计 '+fmt(tot-fee,0)+' USDC；钱包需要约 '+fmt(Math.ceil((tot+0.2)*100)/100,2)+' USDC + '+needB.toFixed(3)+' BNB')+(short?'（目前不够，不够的部分会等你补足再存）':'')):'';
+  if(MODE==='plan')renderPlanEst()}
+function planDirty(){const a=JSON.stringify((S&&S.settings.plan||[]).map(r=>[r.strategyId,Number(r.termDays),Number(r.amount)])),b=JSON.stringify((MODE==='plan'?PLAN:[]).map(r=>[r.strategyId,Number(r.termDays),Number(r.amount)]));return a!==b}
+function segSync(){if(S&&$('saveHint')){const d=String($('sMax').value)!==String(S.settings.maxPerRoundU)||String($('sRounds').value)!==String(S.settings.maxRounds||0)||planDirty();$('bSave').textContent=d?'保存设置 •':'保存设置';$('bSave').title=d?'有未保存的修改，保存后从下一轮生效':''}const v=Math.min(1000,Math.max(0,Math.floor(Number($('sMax').value)||0)));if(MODE!=='plan'){$('eRound').innerHTML=fmt(v*100,0)+'<small>TP</small>';$('eDay').innerHTML=fmt(v*350,0)+'<small>TP</small>'}else renderPlanEst();document.querySelectorAll('#segMax button').forEach(x=>x.classList.toggle('on',x.dataset.v===String($('sMax').value)));document.querySelectorAll('#segRounds button').forEach(x=>x.classList.toggle('on',x.dataset.v===String($('sRounds').value)))}
+document.querySelectorAll('#segMode button').forEach(x=>x.onclick=()=>setMode(x.dataset.m));
+$('bAddRow').onclick=()=>{if(!STRATS){loadStrats().then(addRow);return}addRow()};
+$('planRows').addEventListener('change',ev=>{const row=ev.target.closest('.prow');if(!row)return;const i=+row.dataset.i,k=ev.target.dataset.k;if(!k)return;const r=PLAN[i];
+  if(k==='strategyId'){r.strategyId=ev.target.value;const sd=(STRATS||[]).find(x=>x.id===r.strategyId);if(sd){r.name=sd.name;if(!sd.terms.includes(Number(r.termDays)))r.termDays=sd.terms.includes(0.25)?0.25:sd.terms[0];r.amount=Math.max(sd.min,Math.min(Number(r.amount)||100,1000,sd.avail||1000))}}
+  else if(k==='termDays')r.termDays=Number(ev.target.value);
+  else if(k==='amount'){let v=Math.floor(Number(ev.target.value)||0);if(v>1000){v=1000;toast('单轮最多 1000U，已调整为 1000（要存更多就多跑几轮）')}else if(v<10){v=10;toast('单轮最少 10U，已调整为 10')}const sd=(STRATS||[]).find(x=>x.id===r.strategyId);if(sd&&v>sd.avail&&sd.avail>=sd.min){v=sd.avail;toast('这个策略只剩 '+sd.avail+'U 空位，已调整为 '+sd.avail+'U')}r.amount=v}
+  renderPlan();segSync()});
+$('planRows').addEventListener('click',ev=>{const b=ev.target.closest('[data-rm]');if(b){PLAN.splice(+b.dataset.rm,1);renderPlan();segSync()}});
+document.querySelectorAll('#segMax button').forEach(x=>x.onclick=()=>{$('sMax').value=x.dataset.v;segSync()});
+document.querySelectorAll('#segRounds button').forEach(x=>x.onclick=()=>{$('sRounds').value=x.dataset.v;segSync()});
+$('sMax').oninput=$('sRounds').oninput=segSync;
+document.querySelectorAll('#tabs button').forEach(x=>x.onclick=()=>{document.querySelectorAll('#tabs button').forEach(y=>y.classList.toggle('on',y===x));$('pHist').style.display=x.dataset.t==='hist'?'':'none';$('pLogs').style.display=x.dataset.t==='logs'?'':'none'});
+$('bMenu').onclick=ev=>{ev.stopPropagation();$('dd').classList.toggle('on')};
+document.addEventListener('click',()=>$('dd').classList.remove('on'));
+$('bTermsGo').onclick=async()=>{if(!$('termsChk').checked)return toast('请先勾选同意',true);$('mTerms').classList.remove('on');await act('accept-terms',{agree:true,version:S.env.terms&&S.env.terms.version})};
+$('bStart').onclick=()=>act('start');$('bStop').onclick=()=>act('stop');
+$('bRecall').onclick=()=>$('mRecall').classList.add('on');
+$('bRestart').onclick=()=>act('restart');
+$('bQuit').onclick=()=>$('mQuit').classList.add('on');
+async function repPreview(){try{const r=await call('report-preview',{note:$('repNote').value,lang:LANG});const x=r.report||{};$('repPrev').textContent=[x.version&&('v'+x.version+' · '+x.os+' · '+x.mode),x.status,x.screen,...(x.slots||[]),'—',...(x.logs||[])].filter(Boolean).join('\n')}catch(e){$('repPrev').textContent=String(e.message)}}
+$('bReport').onclick=()=>{$('repNote').value='';$('mReport').classList.add('on');repPreview()};
+$('repNote').onchange=repPreview;
+$('bReportGo').onclick=async()=>{$('mReport').classList.remove('on');await act('report',{note:$('repNote').value,lang:LANG})};
+$('bQuitGo').onclick=async()=>{$('mQuit').classList.remove('on');await act('quit',{confirm:'QUIT'});setTimeout(()=>{console.log('__AUTODEPOSIT_CLOSE__');try{window.close()}catch(e){}},1200)};
+$('bRecallGo').onclick=async()=>{$('mRecall').classList.remove('on');await act('recall',{confirm:'RECALL'})};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('on'));
+document.querySelectorAll('.modal').forEach(m=>m.onclick=ev=>{if(ev.target===m)m.classList.remove('on')});
+$('bSave').onclick=async()=>{const v=Math.floor(Number($('sMax').value)||0);if(v>1000){$('sMax').value=1000;toast('单轮最多 1000U，已调整为 1000（要存更多就多跑几轮）')}else if(v<10){$('sMax').value=10;toast('单轮最少 10U，已调整为 10')}const r=Math.floor(Number($('sRounds').value)||0);if(r>150){$('sRounds').value=150;toast('最多 150 轮，已调整为 150')}else if(r<0)$('sRounds').value=0;if(MODE==='plan'&&PLAN.some(r=>!r.strategyId))return toast('有一项还没选择策略',true);if(MODE==='plan'&&!PLAN.length)return toast('请至少添加一个策略，或改回「自动挑选」',true);await act('settings',{maxPerRoundU:$('sMax').value,maxRounds:$('sRounds').value,plan:MODE==='plan'?PLAN.map(r=>({id:r.id,strategyId:r.strategyId,termDays:Number(r.termDays),amount:Math.floor(Number(r.amount)||0)})):[]});settingsLoaded=false;await load()};
+$('bTg').onclick=async()=>{const tk=$('sTg').value.trim(),ci=$('sChat').value.trim();await act('settings',{tgToken:tk,tgChatId:ci});settingsLoaded=false;await load()};
+$('bInv').onclick=async()=>{const c=$('invCode').value.trim().toUpperCase();if(!c)return toast('请输入邀请码',true);await act('invite-bind',{code:c})};
+$('bTgTest').onclick=()=>act('tg-test');
+$('bRefresh').onclick=()=>act('refresh');
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'))});
+setLang(LANG);i18nObs.observe(document.body,{childList:true,subtree:true,characterData:true});
+load();setInterval(load,3000);
+</script>
+</body>
+</html>
