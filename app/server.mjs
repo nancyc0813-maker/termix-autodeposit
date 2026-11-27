@@ -20,7 +20,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误回报收件箱（只收使用者按下「回报问题」送出的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
