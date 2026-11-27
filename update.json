@@ -1,10 +1,10 @@
 {
- "version": "1.0.5",
- "commit": "6571ed50d68d2a6c162ef816093151e2d9dc5e03",
+ "version": "1.0.6",
+ "commit": "d3e5b52ee1deca6229887560527494663cc5e3b4",
  "critical": true,
  "notes": {
-  "zh": "必要更新：BNB／USDC 提示改正确、改简短（每单实际约花 0.002 BNB，用剩退回）。",
-  "en": "Required update: correct, shorter BNB / USDC reminders (each round uses about 0.002 BNB, the rest comes back)."
+  "zh": "必要更新：清楚说明 USDC 和 BNB 各是做什么用、每单实际只花约 0.002 BNB、本金全部退回。",
+  "en": "Required update: clear explanation of what USDC and BNB are for; each round really uses about 0.002 BNB and principal comes back in full."
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "fc02b11a13c7f69e631a43715df430f4e4ffe1b0f7d27510b8e4c195ef04b1cb",
+   "sha256": "d63b021a4c75fa24b3ef96f6ec84e6c7a2c33ffc5abcf74bc0400c6558ac1d44",
    "size": 8663
   },
   {
@@ -54,13 +54,13 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "76dfa5d34f20ee98068dc1a4a9327ddfe6678ce32c5412d27ac12630ab1a037d",
-   "size": 106188
+   "sha256": "617d27c936ebadd2ac70aed6f1f49eeab78c3bac8ea63793d9074c3ce731e698",
+   "size": 106209
   },
   {
    "path": "app/ui.html",
-   "sha256": "a96de4cebc523c2591f6546bbde1481c2b435659df0938ed3e894c81b86dcd3b",
-   "size": 230179
+   "sha256": "ccfc36cd952c341b935658f1dbddf7f6da5a184fd8372087b930f254122663db",
+   "size": 234973
   },
   {
    "path": "app/updater.mjs",
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T16:44:44.235Z",
- "sig": "xMovGQhGvBW/Z4pSIpxi5sajXnA8yOxgI7gDk92FSCvsGsELgEzUqBrr6FD/H5r1SnsjPg75ohyOBnflk3YiCA=="
+ "publishedAt": "2026-11-27T16:53:38.969Z",
+ "sig": "6Z3TkHZxHivIh7pTqVMI6lcUzAUcETeuhTTaGmRFHAWb+0hLuE8gHjuyRVEmLn4hIojevDHin2T1eLLpG4x3AA=="
 }
