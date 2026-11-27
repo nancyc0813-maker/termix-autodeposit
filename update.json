@@ -1,10 +1,10 @@
 {
- "version": "1.0.4",
- "commit": "3d18da49049a792946e7c1e911bb71e401a00ebf",
+ "version": "1.0.5",
+ "commit": "6571ed50d68d2a6c162ef816093151e2d9dc5e03",
  "critical": true,
  "notes": {
-  "zh": "必要更新：钱包没有 USDC 时会清楚提醒要转入 BSC 链 USDC（每单至少 10U）。",
-  "en": "Required update: clear reminder to add USDC on BSC (at least 10U per round) when the wallet has none."
+  "zh": "必要更新：BNB／USDC 提示改正确、改简短（每单实际约花 0.002 BNB，用剩退回）。",
+  "en": "Required update: correct, shorter BNB / USDC reminders (each round uses about 0.002 BNB, the rest comes back)."
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "c162e6826f0cc92a4b6d63c97434b22bab5cb59f97b6a8cadc3af1de25830466",
+   "sha256": "fc02b11a13c7f69e631a43715df430f4e4ffe1b0f7d27510b8e4c195ef04b1cb",
    "size": 8663
   },
   {
@@ -54,13 +54,13 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "b1bf5a4f44c6bba37103c1e7a1322e53ed59851e41f83e091456158c5768672b",
+   "sha256": "76dfa5d34f20ee98068dc1a4a9327ddfe6678ce32c5412d27ac12630ab1a037d",
    "size": 106188
   },
   {
    "path": "app/ui.html",
-   "sha256": "29324ecd213b60a7bd1e09c09ff148c051892a1e1fa3d12803c69b954ba2d11b",
-   "size": 230654
+   "sha256": "a96de4cebc523c2591f6546bbde1481c2b435659df0938ed3e894c81b86dcd3b",
+   "size": 230179
   },
   {
    "path": "app/updater.mjs",
@@ -408,6 +408,6 @@
    "size": 4379
   }
  ],
- "publishedAt": "2026-11-27T16:30:26.918Z",
- "sig": "OXaRgAmO6b/I67LwWBw+43BX8dw8Y92X1E1z25b80xuwJ+cxz4xv5GndmmLw6ooReA5/Gp0JxYadrfZDZuP+DQ=="
+ "publishedAt": "2026-11-27T16:44:44.235Z",
+ "sig": "xMovGQhGvBW/Z4pSIpxi5sajXnA8yOxgI7gDk92FSCvsGsELgEzUqBrr6FD/H5r1SnsjPg75ohyOBnflk3YiCA=="
 }
