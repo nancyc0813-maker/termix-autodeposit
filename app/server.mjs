@@ -21,7 +21,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.9';
+const VERSION = '1.0.10';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误反馈收件箱（只收使用者按下「反馈问题」发送的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -1052,7 +1052,7 @@ async function recallAll() {
     try {
       if (['allocate', 'register'].includes(s.step) && !s.address) { s.step = 'done'; s.principalSwept = true; s.cancelReason = '使用者收回'; continue; }
       if (s.orderId && (s.orderStatus === 'PENDING_ACCEPT' || s.step === 'wait_accept') && (s.cancelPrompts || 0) < 3) {
-        try { const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {}); assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单'); if (r.app) s.cancelPrompts = (s.cancelPrompts || 0) + 1; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'cancel'; } catch (e) { slotLog(s, '取消订单：' + e.message); }
+        try { const it = await api('POST', `/api/v1/orders/${s.orderId}/cancel-pending/prepare`, {}); assertEscrowIntent(it, '取消订单'); const r = await sendIntent(it, '取消订单'); if (r.app) { s.cancelPrompts = (s.cancelPrompts || 0) + 1; s.appWaitUntil = Date.now() + 15 * 60_000; s.appWhat = 'cancel'; await notify('请在币安 App 确认「取消订单」，手续费才会退回', { tag: s.id }); } } catch (e) { slotLog(s, '取消订单：' + e.message); }
       }
       await revoke(s);
       s.cancelReason ||= '使用者收回'; s.force = true; if (s.step === 'paused') s.errCount = 0;
@@ -1113,7 +1113,7 @@ const server = http.createServer(async (rq, rs) => {
       case '/api/restart': exitWhenIdle(10, '重新启动工具'); return send(200, { ok: true, note: '工具正在重新启动，约 15 秒后刷新页面' });
       case '/api/quit': if (b.confirm !== 'QUIT') return send(400, { error: '需要确认' }); st.running = false; save(); exitWhenIdle(0, '关闭工具（已停止开新单；进行中的存款下次开启时会继续收回）'); return send(200, { ok: true, note: '工具已关闭。要再开启，点桌面上的「TermiX AutoDeposit」' });
       case '/api/recall': if (b.confirm !== 'RECALL') return send(400, { error: '需要确认' }); st.running = false; st.recallRequested = true; save(); tick(); return send(200, { ok: true, note: '已开始收回，几分钟内完成，进度看「进行中」' });
-      case '/api/retry': { if (busy) return send(409, { error: '正在处理中，几秒后再按' }); const s = st.slots.find((x) => x.id === b.id && x.step === 'paused'); if (!s) return send(404, { error: '找不到这一笔' }); s.step = s.pausedFrom || 'sweep'; s.errCount = 0; save(); tick(); return send(200, { ok: true }); }
+      case '/api/retry': { if (busy) return send(409, { error: '正在处理中，几秒后再按' }); const s = st.slots.find((x) => x.id === b.id && x.step === 'paused'); if (!s) return send(404, { error: '找不到这一笔' }); s.step = s.pausedFrom || 'sweep'; delete s.pausedFrom; s.errCount = 0; s.nextTryAt = 0; save(); tick(); return send(200, { ok: true }); }
       case '/api/settings': {
         const n = {};
         if (b.plan !== undefined) {
@@ -1162,7 +1162,7 @@ const server = http.createServer(async (rq, rs) => {
         if (!settings.tgToken || !settings.tgChatId) return send(400, { error: '请先填写并保存 Bot Token 和 Chat ID' });
         try {
           const r = await fetch(`https://api.telegram.org/bot${settings.tgToken}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: settings.tgChatId, text: `${tgTitle(settings.lang)} ${tgText('[TermiX 自动存款] 测试消息', settings.lang) === '[TermiX 自动存款] 测试消息' ? '测试：收到这则代表 TG 提醒正常' : tgText('[TermiX 自动存款] 测试消息', settings.lang)}` }), signal: AbortSignal.timeout(10_000) });
-          if (!r.ok) return send(400, { error: ', settings.lang)}`Telegram 发送失败（请检查 Bot Token、Chat ID，并先对机器人按 Start）' });
+          if (!r.ok) return send(400, { error: 'Telegram 发送失败（请检查 Bot Token、Chat ID，并先对机器人按 Start）' });
         } catch { return send(400, { error: '连不上 Telegram，请检查网络' }); }
         return send(200, { ok: true, note: '已发出测试消息，请到 Telegram 查看' });
       }
