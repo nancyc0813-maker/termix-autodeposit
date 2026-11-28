@@ -21,7 +21,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.8';
+const VERSION = '1.0.9';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误反馈收件箱（只收使用者按下「反馈问题」发送的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');

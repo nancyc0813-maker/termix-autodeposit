@@ -6,7 +6,7 @@
 
 ## 先决条件
 - 工具要在运行：用户双击桌面「TermiX AutoDeposit」或工具文件夹的 `Start-TermiX.vbs`。
-- 所有命令都在工具文件夹里执行：`node app/cli.mjs <命令>`，输出都是 JSON。
+- 所有命令都在工具文件夹里执行：`runtime\node\node.exe app/cli.mjs <命令>`（工具第一次启动后才会解压出来；也可以用电脑已安装的 node 22.12+），输出都是 JSON。
 
 ## 命令
 | 命令 | 作用 |

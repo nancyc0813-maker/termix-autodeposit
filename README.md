@@ -18,7 +18,7 @@
 
 ## 二、准备
 
-1. **一台 Windows 电脑**，安装 Node.js 22.12 以上版本：到 https://nodejs.org 下载 LTS 版，一路「下一步」装好。
+1. **一台 Windows 10/11 电脑**（不用另外安装任何软件，运行环境已经内附在工具包里）。
 2. **币安 App 里的 AI 钱包（Agentic Wallet）**，并开启「开发者模式」：
    币安 App → 钱包 → Agentic Wallet → 设置 → 开发者模式。
 3. AI 钱包里放：
@@ -109,7 +109,7 @@ App 会标示「高风险交易」，这是因为它是你第一次授权的新�
 ## 七、交给你的 AI 操作（最省事，任何语言都行）
 
 把工具文件夹里的 **「给AI的使用说明.md」** 丢给你的 AI（Claude、Grok 等）。
-AI 会用 `node app/cli.mjs status` 查状态、帮你开始／停止，并用你的语言告诉你哪一步要你本人做（扫码、开开发者模式、在 App 按确认、同意条款）。
+AI 会用 `runtime\node\node.exe app/cli.mjs status`（或电脑已装的 node） 查状态、帮你开始／停止，并用你的语言告诉你哪一步要你本人做（扫码、开开发者模式、在 App 按确认、同意条款）。
 
 ---
 
@@ -156,7 +156,7 @@ AI 会用 `node app/cli.mjs status` 查状态、帮你开始／停止，并用�
 > Free, open source, runs on your own computer.
 
 ## 1. Before you start
-1. **A Windows PC** with **Node.js 22.12+** — download the LTS version from https://nodejs.org and click "Next" through the installer.
+1. **A Windows 10/11 PC.** Nothing else to install — the runtime (Node.js) is bundled in the package.
 2. **Binance App → Wallet → Agentic Wallet**, with **Developer Mode** turned on (Agentic Wallet → Settings → Developer Mode).
 3. In the AI wallet: the **USDC (BSC)** you want to deposit (at least 10U per round) plus **at least 0.008 BNB** for gas: each round sends 0.004 BNB to the task wallet, actually uses about 0.002, and returns the rest; 0.004 stays in your wallet. The tool also keeps about 0.2U USDC for fees (20U in the wallet → 19U deposited).
 
@@ -195,7 +195,7 @@ Use the language menu at the top right: 简体中文 / English / 한국어 / Ti�
 - Can't find the request? Look under *Pending* / notifications on the Agentic Wallet page. Each request is re-sent up to 3 times; if never confirmed, the round is cancelled and funds return.
 
 ## 6. Let your AI run it
-Give **给AI的使用说明.md** (AI instructions) in the tool folder to your AI (Claude, Grok, …). It uses `node app/cli.mjs status|start|stop` and tells you, in your language, which steps you must do yourself.
+Give **给AI的使用说明.md** (AI instructions) in the tool folder to your AI (Claude, Grok, …). It uses `runtime\node\node.exe app/cli.mjs status|start|stop` (or an installed node) and tells you, in your language, which steps you must do yourself.
 
 ## 7. Safety
 - Funds only move between your Binance AI wallet and the task wallet the tool creates; the return address is always your own wallet.
