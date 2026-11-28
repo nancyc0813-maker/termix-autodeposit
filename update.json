@@ -1,10 +1,10 @@
 {
- "version": "1.0.9",
- "commit": "6837d604f0b2586041ad0d1e67b5d22273d7521b",
+ "version": "1.0.10",
+ "commit": "e0d4a5bb919498204c9fc97bbd3c62d53f7656df",
  "critical": true,
  "notes": {
-  "zh": "工具包内附运行环境，新用户不用再另外安装 Node.js。",
-  "en": "The package now bundles its runtime — new users no longer need to install Node.js."
+  "zh": "修正：全部收回时「取消订单」的 App 确认提醒不显示；Telegram 测试失败时错误信息乱码；暂停的单按重试后状态显示不对",
+  "en": "Fixes: missing App-confirm prompt when cancelling an order during Recall all; garbled Telegram test error; wrong status after retrying a paused round"
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "d8ea78060f4f67de1d3acf4f1911bc86b63a6533f44667724cf7c94b47fbbbb3",
+   "sha256": "438115f72f4ebf7c78997b72f064f64954fafd55f94e4dfa6f5896c93a24f9f7",
    "size": 8836
   },
   {
@@ -54,8 +54,8 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "9f7b51609fedd41e40f5a493edf7b7c3a85921abee0ef611c94d1674710cf63f",
-   "size": 108196
+   "sha256": "c9b25cf1c6bac672be62fa457eacac31351e4ff40d5039bd4e76931e75009bce",
+   "size": 108326
   },
   {
    "path": "app/tg-i18n.mjs",
@@ -64,8 +64,8 @@
   },
   {
    "path": "app/ui.html",
-   "sha256": "4ad6f1886b65bbe42a6efe4032aa689ccf176a2c39811dcaf97751eb2d031960",
-   "size": 262024
+   "sha256": "2984865dd392b93288bfc5005ebd9e24b4c931ed79fde3cebaf4888e517f62c3",
+   "size": 261227
   },
   {
    "path": "app/updater.mjs",
@@ -413,6 +413,6 @@
    "size": 4539
   }
  ],
- "publishedAt": "2026-11-28T04:00:15.586Z",
- "sig": "7DCehLVhxJm5lNFXuy9ijq79tNueMOijutrQ8umTBEP7qWd9cOUEAAWdllvodMTwR7kbttv9mCi5xuduekOkAg=="
+ "publishedAt": "2026-11-28T11:42:09.285Z",
+ "sig": "wprjIGQOd4cDexKhIEZSFYSb1Tfs5BaKAFYHDXaMeZLlvZQJ2yJEzJztuW/B6x+1QIPiGcP+uRigUp159gYvCQ=="
 }
