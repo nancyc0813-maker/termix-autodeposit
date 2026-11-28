@@ -21,7 +21,7 @@ import { openApp } from './openapp.mjs';
 import { release as osRelease } from 'node:os';
 import { makeUpdater } from './updater.mjs';
 
-const VERSION = '1.0.10';
+const VERSION = '1.0.11';
 const REPORT_URL = 'https://autodeposit-report.nightshift-hood.workers.dev/report'; // 作者的错误反馈收件箱（只收使用者按下「反馈问题」发送的内容）
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -194,6 +194,9 @@ const lastLine = (s) => {
   return scrub(e).slice(0, 220);
 };
 const needsApp = (s) => /needs approval in the Binance App|PENDING_CONFIRMATION|must approve this/i.test(s);
+// 币安钱包风控直接拒绝（不是工具的问题；重试也没用，要用户在币安 App 改设置）
+const riskBlocked = (s) => /risk is too high|has been rejected: blocked|351803|DEFI_SECURITY_RISK_BLOCKED/i.test(String(s || ''));
+const RISK_MSG = '币安钱包的风控拒绝了手续费授权（不是工具的问题）。请打开币安 App → Agentic Wallet 设置，把「异常交易处理」改成「需要确认」，改好后回到工具按「开始」。本金不会受影响，已转出的会自动收回。';
 const appRejected = (s) => /(rejected|declined|denied) by (the )?user|user (rejected|declined|denied|cancel)|rejected in (the )?(Binance )?App/i.test(s); // 用户在币安 App 按了拒绝
 
 async function api(method, path, body) {
@@ -558,6 +561,7 @@ async function stepSlot(s) {
       if (needsApp(r.all)) {
         s.fundSentAt = 0;
         s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fund'; await notify('请打开币安 App 确认转入本金的交易', { tag: s.id }); return; }
+      if (riskBlocked(r.all)) { s.cancelReason = '币安钱包风控拒绝了转账'; s.force = true; st.running = false; save(); await notify(RISK_MSG); return ok(s, 'sweep', '币安钱包风控拒绝了转账，这一轮已取消'); }
       if (r.code !== 0) throw new Error(lastLine(r.all));
       for (let i = 0; i < 12; i++) { // 等上链
         const [u2, b2] = await Promise.all([bal(A.USDC, s.address), bnb(s.address)]);
@@ -661,6 +665,7 @@ async function stepSlot(s) {
       const r = await run('quant-client-local.mjs', ['escrow-fee', '--checkout', s.checkoutId, '--yes'], { timeoutMs: 300_000, extraEnv: { ANCHOR_MAX_FEE_WEI: String(maxFeeWei), ANCHOR_APPROVE_WEI: String(approveWei) } });
       if (/sent createOrder|createOrderTx/.test(r.all)) { s.orderSentAt = now; save(); }
       if (!s.orderSentAt && (needsApp(r.all) || appRejected(r.all))) { s.appPrompts = (s.appPrompts || 0) + 1; save(); } // 只算「App 确认／拒绝」，网络或节点错误不算（另有 2 小时上限）
+      if (!s.orderSentAt && riskBlocked(r.all)) { await abortSlot(s, '币安钱包风控拒绝了手续费授权'); st.running = false; feeAuth = { state: 'blocked', at: now }; save(); await notify(RISK_MSG); return ok(s, 'sweep', '币安钱包风控拒绝了手续费授权，已取消并收回本金'); }
       if (!s.orderSentAt && /refusing/i.test(r.all)) { await abortSlot(s, '手续费交易内容不符安全规则，已拒绝付款'); await notify(`一笔 ${s.alloc}U：后台送来的付费交易不符安全规则，已拒绝并收回本金。原因：${lastLine(r.all)}`); return ok(s, 'sweep'); }
       if (needsApp(r.all) && /createOrder/.test(r.all)) { s.orderSentAt = now; s.appWaitUntil = now + 15 * 60_000; s.appWhat = 'fee-pay'; save(); await notify('请在币安 App 确认「付手续费」交易', { tag: s.id }); return; }
       if (needsApp(r.all) && !s.orderSentAt) {
@@ -885,6 +890,32 @@ function doneRounds(planId) {
   return settled + settling;
 }
 const planOn = () => Array.isArray(settings.plan) && settings.plan.length > 0;
+// 开新单前先授权手续费额度（只给 TermiX 官方托管合约）：会被币安风控挡的就是这一步，放在转本金之前做，挡住也不会有钱卡在任务钱包
+const FEE_APPROVE_WEI = parseUnits('1', 18);
+let feeAuth = { state: '', at: 0 };
+async function ensureFeeAllowance(needU) {
+  const need = parseUnits(Math.max(Number(needU) || 0, 0.000001).toFixed(18), 18);
+  let have = null;
+  try { have = await pc.readContract({ address: A.USDC, abi: ERC20, functionName: 'allowance', args: [OWNER, A.ESCROW] }); } catch { have = null; }
+  if (have === null) return 'wait';
+  if (have >= need) { if (feeAuth.state !== 'ok') feeAuth = { state: 'ok', at: Date.now() }; return 'ok'; }
+  if (feeAuth.state === 'app' && Date.now() - feeAuth.at < 15 * 60_000) return 'app';
+  if (feeAuth.state === 'blocked') return 'blocked';
+  if (feeAuth.state === 'sending') return 'wait';
+  feeAuth = { state: 'sending', at: Date.now() };
+  log('开新单前先授权手续费额度（只给 TermiX 官方托管合约，最多 1 USDC）');
+  const intent = { action: 'approveEscrow', to: getAddress(A.USDC), value: '0', data: '0x095ea7b3' + A.ESCROW.slice(2).padStart(64, '0') + FEE_APPROVE_WEI.toString(16).padStart(64, '0') };
+  const r = await run('aacp-tx.mjs', ['--intent', JSON.stringify(intent), '--yes'], { timeoutMs: 240_000 });
+  if (riskBlocked(r.all)) { feeAuth = { state: 'blocked', at: Date.now() }; st.running = false; save(); await notify(RISK_MSG); return 'blocked'; }
+  if (needsApp(r.all)) { feeAuth = { state: 'app', at: Date.now() }; await notify('第一次使用：请打开币安 App 确认「手续费授权」（只要一次），确认后会自动开始存款'); return 'app'; }
+  if (r.code !== 0) { feeAuth = { state: '', at: Date.now() }; log('授权手续费额度没有完成（稍后再试）：' + lastLine(r.all), 'warn'); return 'wait'; }
+  for (let i = 0; i < 12; i++) {
+    try { const h = await pc.readContract({ address: A.USDC, abi: ERC20, functionName: 'allowance', args: [OWNER, A.ESCROW] }); if (h >= need) { feeAuth = { state: 'ok', at: Date.now() }; log('手续费额度已授权'); return 'ok'; } } catch { /* 下次再看 */ }
+    await new Promise((r2) => setTimeout(r2, 5000));
+  }
+  feeAuth = { state: '', at: Date.now() }; return 'wait';
+}
+const feeAuthNote = (r) => r === 'blocked' ? RISK_MSG : r === 'app' ? '第一次使用：请打开币安 App 确认「手续费授权」（只要一次），确认后会自动开始存款' : '正在授权手续费额度，稍后自动开始';
 async function maybeNewSlot() {
   if (Date.now() - lastNewSlot < 60_000) return;
   if (planOn()) return maybeNewPlanSlot();
@@ -910,8 +941,9 @@ async function maybeNewSlot() {
   const cands = await pickStrategies();
   const c = cands.find((x) => Math.min(x.avail, avail) >= Math.max(10, Number(x.s.minAllocationU) || 10));
   if (!c) { lastPickNote = '目前没有已上架且有空位的策略（策略要先通过官方审核），会自动再找'; return; }
-  lastPickNote = '';
   const alloc = Math.min(c.avail, avail);
+  { const fa = await ensureFeeAllowance(feeCap(alloc, c.s.mgmtFeeBps, TERM_DAYS)); if (fa !== 'ok') { lastPickNote = feeAuthNote(fa); return; } }
+  lastPickNote = '';
   lastNewSlot = Date.now();
   const s = { id: randomBytes(3).toString('hex'), createdAt: Date.now(), strategyId: c.s.id, strategyName: c.s.name, provider: c.s.agentHandle, label: c.c.label, feeBps: c.s.mgmtFeeBps, venueAllow: c.s.venueAllowlist, alloc, step: 'allocate', log: [] };
   slotLog(s, `新一轮：${alloc} U → ${c.s.name}（${c.c.label}）`);
@@ -957,6 +989,7 @@ async function maybeNewPlanSlot() {
     if (alloc < sd.min) { notes.push(`「${sd.name}」空位不足（剩 ${sd.avail}U），有空位会自动存`); continue; }
     const fee = feeCap(alloc, sd.feeBps, r.termDays);
     if (alloc + fee > avail) { notes.push(`币安钱包 USDC 不够存「${sd.name}」（需要 ${Math.ceil((alloc + fee) * 100) / 100}U，可用 ${Math.max(0, Math.floor(avail * 100) / 100)}U）`); continue; }
+    { const fa = await ensureFeeAllowance(fee); if (fa !== 'ok') { lastPickNote = feeAuthNote(fa); return; } }
     lastPickNote = notes.join('；');
     lastNewSlot = Date.now();
     const raw = (await allStrategies()).items.find((x) => x.id === sd.id) || {};
@@ -1099,7 +1132,7 @@ const server = http.createServer(async (rq, rs) => {
     if (txPath) apiBusy++;
     try {
     switch (url.pathname) {
-      case '/api/start': if (otherInstance) return send(400, { error: '这个币安钱包已经由另一份工具在运行，这份不能开始' }); if (!ready()) return send(400, { error: '还没完成设置' }); st.running = true; st.noAccept = 0; st.abortStreak = 0; st.runStartedAt = Date.now(); save(); log('▶ 开始自动存款'); tick(); return send(200, { ok: true });
+      case '/api/start': if (otherInstance) return send(400, { error: '这个币安钱包已经由另一份工具在运行，这份不能开始' }); if (!ready()) return send(400, { error: '还没完成设置' }); st.running = true; st.noAccept = 0; st.abortStreak = 0; st.runStartedAt = Date.now(); feeAuth = { state: '', at: 0 }; lastPickNote = ''; save(); log('▶ 开始自动存款'); tick(); return send(200, { ok: true });
       case '/api/stop': st.running = false; save(); log('⏸ 停止开新单（进行中的单会跑完并自动收回）'); return send(200, { ok: true });
       case '/api/logs': { // 给用户和用户自己的 AI 排查问题用（只在本机读取，不会上传）
         const n = Math.max(1, Math.min(1000, Math.floor(Number(b.n) || 200))), onlyErr = !!b.errors;
