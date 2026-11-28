@@ -1,10 +1,10 @@
 {
- "version": "1.0.8",
- "commit": "fbfe849876fda57a9e5dd01018379ac75e1ae2a1",
+ "version": "1.0.9",
+ "commit": "6837d604f0b2586041ad0d1e67b5d22273d7521b",
  "critical": true,
  "notes": {
-  "zh": "TG 通知会跟着工具介面语言（中、英、韩、越、日）。",
-  "en": "Telegram alerts now follow the tool's language (zh/en/ko/vi/ja)."
+  "zh": "工具包内附运行环境，新用户不用再另外安装 Node.js。",
+  "en": "The package now bundles its runtime — new users no longer need to install Node.js."
  },
  "files": [
   {
@@ -14,18 +14,18 @@
   },
   {
    "path": "README.md",
-   "sha256": "2390cefc44f75452ee510ae17a093ccaeed39fe34748c5ab7dc22b37fffab818",
-   "size": 15726
+   "sha256": "58fdebb85ddcd7f2d230cef5c8dff85baadd98e01ee6e5b6d61214fc4a1028e4",
+   "size": 15757
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "2e96cf46f77f2e6d397b2895226a8a031056205f1e25cb698a6da7f8950cca6d",
-   "size": 8745
+   "sha256": "d8ea78060f4f67de1d3acf4f1911bc86b63a6533f44667724cf7c94b47fbbbb3",
+   "size": 8836
   },
   {
    "path": "Start-TermiX.vbs",
-   "sha256": "5a63851ca505e9a2c0c11cea913bd7df678b821be4afb170996234e6c9db6290",
-   "size": 4052
+   "sha256": "d1edb50b2da036e2dd3e258c9f54a076a90b537b2409689f170e6c98be821e72",
+   "size": 7352
   },
   {
    "path": "app/app-icon.svg",
@@ -54,7 +54,7 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "8952d6e9934ac4c8d35dca8859784b54e09bf188ba675e566f8f6837a8581aea",
+   "sha256": "9f7b51609fedd41e40f5a493edf7b7c3a85921abee0ef611c94d1674710cf63f",
    "size": 108196
   },
   {
@@ -404,15 +404,15 @@
   },
   {
    "path": "使用说明.txt",
-   "sha256": "05a519e67ff2c0315241fafdb9724d1520605d106a8f5d3ffc638c7013dfff1f",
+   "sha256": "9beb838cfece12eead1648655cd9fe3497e84577ee23a7ce8d5553176ab0d3ab",
    "size": 10725
   },
   {
    "path": "给AI的使用说明.md",
-   "sha256": "5c2ff7f561359e5e5bfe5a7fe96d65ccdbee465ba88c4245622d08e030447611",
-   "size": 4429
+   "sha256": "a1b6040e2161c98a06deae19d3ef15fa37b2059b6fc2b75523cba47311ec968d",
+   "size": 4539
   }
  ],
- "publishedAt": "2026-11-27T17:49:21.080Z",
- "sig": "W1HW5PuHR0JljDVEIP6YjwSKMggpT0+UWwC24WuV509Fq+w/hGXQa0q4hGh7r39Hkvo5ToYcHmtsHLur1r9xBA=="
+ "publishedAt": "2026-11-28T04:00:15.586Z",
+ "sig": "7DCehLVhxJm5lNFXuy9ijq79tNueMOijutrQ8umTBEP7qWd9cOUEAAWdllvodMTwR7kbttv9mCi5xuduekOkAg=="
 }
