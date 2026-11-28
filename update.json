@@ -1,10 +1,10 @@
 {
- "version": "1.0.10",
- "commit": "e0d4a5bb919498204c9fc97bbd3c62d53f7656df",
+ "version": "1.0.11",
+ "commit": "bbfd90186135b20a52bda69c6b365711ac0f5643",
  "critical": true,
  "notes": {
-  "zh": "修正：全部收回时「取消订单」的 App 确认提醒不显示；Telegram 测试失败时错误信息乱码；暂停的单按重试后状态显示不对",
-  "en": "Fixes: missing App-confirm prompt when cancelling an order during Recall all; garbled Telegram test error; wrong status after retrying a paused round"
+  "zh": "开新单前先授权手续费额度（还没动钱）；若被币安钱包风控拒绝，立即停止并说明要改的设置，已卡在付手续费的单会马上收回本金",
+  "en": "Fee allowance is approved before any funds move; if Binance Wallet's risk check blocks it, the tool stops right away and explains the setting to change; rounds stuck at paying the fee are recalled immediately"
  },
  "files": [
   {
@@ -19,7 +19,7 @@
   },
   {
    "path": "SHA256SUMS.txt",
-   "sha256": "438115f72f4ebf7c78997b72f064f64954fafd55f94e4dfa6f5896c93a24f9f7",
+   "sha256": "54e2ce226fb0260e93a23468f715a805134ef32200cb11a31a02ed27909eba56",
    "size": 8836
   },
   {
@@ -54,18 +54,18 @@
   },
   {
    "path": "app/server.mjs",
-   "sha256": "c9b25cf1c6bac672be62fa457eacac31351e4ff40d5039bd4e76931e75009bce",
-   "size": 108326
+   "sha256": "6a0c356d3c481cbeffb5861baecf712d1c03e18d931a72778b2e39dec2cfbbff",
+   "size": 112255
   },
   {
    "path": "app/tg-i18n.mjs",
-   "sha256": "62b755fd3ed654c9af4514afbcb6f5ff505b33b48df62a3ddceedbd28e713231",
-   "size": 22884
+   "sha256": "6db920eaa924af73042f0f800a46cd6c261608e9b879b182bbc96251c742df3e",
+   "size": 25239
   },
   {
    "path": "app/ui.html",
-   "sha256": "2984865dd392b93288bfc5005ebd9e24b4c931ed79fde3cebaf4888e517f62c3",
-   "size": 261227
+   "sha256": "0a4980f5da3379aba47337792ae728e295a22601091e229f45cc2721199fd1a4",
+   "size": 266098
   },
   {
    "path": "app/updater.mjs",
@@ -413,6 +413,6 @@
    "size": 4539
   }
  ],
- "publishedAt": "2026-11-28T11:42:09.285Z",
- "sig": "wprjIGQOd4cDexKhIEZSFYSb1Tfs5BaKAFYHDXaMeZLlvZQJ2yJEzJztuW/B6x+1QIPiGcP+uRigUp159gYvCQ=="
+ "publishedAt": "2026-11-28T14:20:12.906Z",
+ "sig": "9DTlBz9y/VuStv9yTdBLHH0mYHwVb3tXxCfRrLNM7ExWyCwhbiDQ3+QT+xYa+pCmhzPa3B145c3jwosRFs0pBw=="
 }
